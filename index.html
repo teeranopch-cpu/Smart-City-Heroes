@@ -119,9 +119,10 @@
             <label class="text-sm text-gray-600">สถานที่ / จุดสังเกต / พิกัด <span class="text-red-500">*</span></label>
             <input id="fLocation" required type="text" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="เช่น ซอยลาดพร้าว 71 หน้าร้านสะดวกซื้อ">
             <div class="flex items-center gap-2 mt-2">
-              <button type="button" onclick="useGPS()" class="bg-brand-50 text-brand-700 border border-brand-200 px-3 py-1.5 rounded-lg text-sm hover:bg-brand-100">📍 ใช้ตำแหน่งปัจจุบัน</button>
+              <button type="button" id="gpsBtn" onclick="useGPS()" class="bg-brand-50 text-brand-700 border border-brand-200 px-3 py-1.5 rounded-lg text-sm hover:bg-brand-100">📍 ขอใช้ตำแหน่งปัจจุบัน</button>
               <button type="button" id="clearPin" onclick="clearFormPin()" class="hidden text-xs text-gray-500 underline">ล้างหมุด</button>
             </div>
+            <p id="locMsg" class="hidden text-xs mt-2 rounded-lg px-3 py-2 border"></p>
             <div id="formMap" class="mt-2 h-52 w-full border border-gray-200 rounded-xl"></div>
             <p id="coordText" class="text-xs text-gray-500 mt-1">แตะบนแผนที่เพื่อปักหมุดตำแหน่งปัญหา</p>
           </div>
@@ -472,7 +473,11 @@ function setFormPin(lat, lng, zoom) {
   formPin = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
   if (formMap) {
     if (formMarker) formMarker.setLatLng([lat, lng]);
-    else formMarker = L.marker([lat, lng], { icon: pinIcon('#dc2626') }).addTo(formMap);
+    else {
+      formMarker = L.marker([lat, lng], { icon: pinIcon('#dc2626'), draggable: true }).addTo(formMap);
+      // allow fine-tuning the pin by dragging it
+      formMarker.on('dragend', () => { const p = formMarker.getLatLng(); setFormPin(p.lat, p.lng); clearAccuracy(); });
+    }
     if (zoom) formMap.setView([lat, lng], zoom);
   }
   $('coordText').textContent = `📌 พิกัด ${formPin.lat}, ${formPin.lng}`;
@@ -480,25 +485,75 @@ function setFormPin(lat, lng, zoom) {
   const loc = $('fLocation');
   if (!loc.value.trim()) loc.value = `พิกัด ${formPin.lat}, ${formPin.lng}`;
 }
+let accuracyCircle = null;
+function clearAccuracy() {
+  if (accuracyCircle) { accuracyCircle.remove(); accuracyCircle = null; }
+}
 function clearFormPin() {
   formPin = null;
   if (formMarker) { formMarker.remove(); formMarker = null; }
+  clearAccuracy();
   $('coordText').textContent = 'แตะบนแผนที่เพื่อปักหมุดตำแหน่งปัญหา';
   $('clearPin').classList.add('hidden');
 }
-function useGPS() {
-  const fallback = () => {
-    const lat = 13.65 + Math.random() * 0.2, lng = 100.45 + Math.random() * 0.2;
-    setFormPin(lat, lng, 14);
-    toast('ดึงตำแหน่งจริงไม่ได้ ใช้พิกัดจำลองแทน');
+function showLocMsg(text, kind) {
+  const el = $('locMsg');
+  if (!text) { el.classList.add('hidden'); return; }
+  const styles = {
+    info: 'bg-sky-50 text-sky-700 border-sky-200',
+    ok: 'bg-green-50 text-green-700 border-green-200',
+    warn: 'bg-orange-50 text-orange-700 border-orange-200'
   };
-  if (!navigator.geolocation) return fallback();
-  toast('กำลังค้นหาตำแหน่ง...');
+  el.className = `text-xs mt-2 rounded-lg px-3 py-2 border ${styles[kind || 'info']}`;
+  el.textContent = text;
+}
+// Ask the browser for the user's location (shows the browser's permission prompt)
+// and drop a pin on the current position.
+function requestLocation(auto) {
+  const btn = $('gpsBtn');
+  if (!navigator.geolocation) {
+    return showLocMsg('อุปกรณ์/เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง กรุณาแตะบนแผนที่เพื่อปักหมุดเอง', 'warn');
+  }
+  if (window.isSecureContext === false) {
+    return showLocMsg('การขอตำแหน่งต้องเปิดผ่านลิงก์ HTTPS (เช่น GitHub Pages) กรุณาแตะบนแผนที่เพื่อปักหมุดเอง', 'warn');
+  }
+  btn.disabled = true; btn.classList.add('opacity-60');
+  showLocMsg('กำลังขออนุญาตและค้นหาตำแหน่งของคุณ... (กด "อนุญาต" ในหน้าต่างของเบราว์เซอร์)', 'info');
   navigator.geolocation.getCurrentPosition(
-    p => { setFormPin(p.coords.latitude, p.coords.longitude, 17); toast('ดึงตำแหน่งปัจจุบันสำเร็จ 📍'); },
-    fallback,
-    { enableHighAccuracy: true, timeout: 8000 }
+    pos => {
+      btn.disabled = false; btn.classList.remove('opacity-60');
+      if (auto && formPin) { showLocMsg(''); return; } // don't override a pin the user already set
+      const { latitude, longitude, accuracy } = pos.coords;
+      setFormPin(latitude, longitude, 17);
+      clearAccuracy();
+      if (formMap) accuracyCircle = L.circle([latitude, longitude], { radius: accuracy, color: '#dc2626', weight: 1, fillOpacity: 0.08 }).addTo(formMap);
+      showLocMsg(`ปักหมุดตำแหน่งปัจจุบันแล้ว (ความแม่นยำประมาณ ${Math.round(accuracy)} เมตร) · ลากหมุดเพื่อปรับตำแหน่งได้`, 'ok');
+    },
+    err => {
+      btn.disabled = false; btn.classList.remove('opacity-60');
+      const msgs = {
+        1: 'คุณไม่อนุญาตให้ใช้ตำแหน่ง หากต้องการใช้ ให้กดไอคอนแม่กุญแจ/ตำแหน่งข้างช่องที่อยู่เว็บ เลือก "อนุญาต" แล้วกดปุ่มอีกครั้ง หรือแตะบนแผนที่เพื่อปักหมุดเอง',
+        2: 'ไม่สามารถระบุตำแหน่งได้ในขณะนี้ (ตรวจสอบ GPS/อินเทอร์เน็ต) หรือแตะบนแผนที่เพื่อปักหมุดเอง',
+        3: 'หมดเวลาระหว่างค้นหาตำแหน่ง กรุณาลองอีกครั้ง หรือแตะบนแผนที่เพื่อปักหมุดเอง'
+      };
+      showLocMsg(msgs[err.code] || 'ไม่สามารถดึงตำแหน่งได้', 'warn');
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
   );
+}
+function useGPS() { requestLocation(false); }
+// On first visit in a session, ask for location automatically (once);
+// if permission was already granted earlier, pin quietly.
+function autoRequestLocation() {
+  if (!navigator.geolocation || sessionStorage.getItem('infra_loc_asked')) return;
+  sessionStorage.setItem('infra_loc_asked', '1');
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(r => {
+      if (r.state === 'denied') {
+        showLocMsg('การเข้าถึงตำแหน่งถูกบล็อกอยู่ เปิดสิทธิ์ได้ที่ไอคอนข้างช่องที่อยู่เว็บ หรือแตะบนแผนที่เพื่อปักหมุดเอง', 'warn');
+      } else requestLocation(true);
+    }).catch(() => requestLocation(true));
+  } else requestLocation(true);
 }
 function renderFeedMap(list) {
   if (!hasLeaflet()) return mapUnavailable('feedMap');
@@ -963,6 +1018,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLogin
 
 // ====================== Boot ======================
 showView(isAdmin ? 'admin' : 'public');
+if (!isAdmin) autoRequestLocation();
 </script>
 </body>
 </html>
