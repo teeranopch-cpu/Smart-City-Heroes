@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>ระบบหลังบ้านเจ้าหน้าที่ | แจ้งปัญหาโครงสร้างพื้นฐาน</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+<!-- Header -->
+<header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <a href="admin.html" class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-brand-800 text-white flex items-center justify-center text-xl">🛠️</div>
+      <div>
+        <h1 class="font-semibold text-brand-800 leading-tight text-base sm:text-lg">ระบบหลังบ้านเจ้าหน้าที่</h1>
+        <p class="text-xs text-gray-500 hidden sm:block">จัดการเรื่องร้องเรียนโครงสร้างพื้นฐาน</p>
+      </div>
+    </a>
+    <div id="headerActions" class="flex items-center gap-2"></div>
+  </div>
+</header>
+
+<!-- ================= LOGIN VIEW ================= -->
+<main id="loginView" class="hidden max-w-sm mx-auto px-4 py-16">
+  <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-6 fade-in">
+    <h2 class="text-lg font-semibold text-brand-800 mb-1">🔐 เข้าสู่ระบบเจ้าหน้าที่</h2>
+    <p class="text-xs text-gray-500 mb-4">เฉพาะเจ้าหน้าที่ที่ได้รับอนุญาตเท่านั้น</p>
+    <form id="loginForm" class="space-y-3">
+      <div>
+        <label class="text-sm text-gray-600">ชื่อผู้ใช้ (Username)</label>
+        <input id="lUser" type="text" autocomplete="off" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+      </div>
+      <div>
+        <label class="text-sm text-gray-600">รหัสผ่าน (Password)</label>
+        <input id="lPass" type="password" autocomplete="off" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+      </div>
+      <p id="loginError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
+      <button id="loginBtn" type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg">เข้าสู่ระบบ</button>
+    </form>
+    <a href="index.html" class="block text-center text-sm text-gray-500 hover:text-brand-700 mt-4">← กลับหน้าประชาชน</a>
+  </div>
+</main>
+
+<!-- ================= ADMIN VIEW ================= -->
+<main id="adminView" class="hidden max-w-6xl mx-auto px-4 py-6">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+    <h2 class="text-xl font-semibold text-brand-800">แผงควบคุมเจ้าหน้าที่</h2>
+    <button onclick="exportCSV()" class="text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg">⬇️ ส่งออก CSV</button>
+  </div>
+  <div id="summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"></div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h3 class="font-semibold text-gray-700 mb-3 text-sm">จำนวนเรื่องแยกตามหมวดหมู่</h3>
+      <div id="chartCategory" class="space-y-2"></div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h3 class="font-semibold text-gray-700 mb-3 text-sm">เรื่องที่แจ้งใน 7 วันล่าสุด</h3>
+      <div id="chartDays" class="flex items-end justify-between gap-2 h-36"></div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="p-4 border-b border-gray-100 flex flex-wrap gap-2 items-center justify-between">
+      <h3 class="font-semibold text-gray-700">ตารางจัดการเรื่องร้องเรียน</h3>
+      <div class="flex gap-2">
+        <select id="adminFilter" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white"></select>
+        <select id="adminUrgency" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white"></select>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-500 text-left">
+          <tr>
+            <th class="px-4 py-3">รหัส</th>
+            <th class="px-4 py-3">รูป</th>
+            <th class="px-4 py-3">หมวดหมู่ / รายละเอียด</th>
+            <th class="px-4 py-3">วันที่แจ้ง</th>
+            <th class="px-4 py-3">สถานะ</th>
+            <th class="px-4 py-3 text-right">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="adminTable" class="divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+    <p id="adminEmpty" class="hidden text-center text-gray-400 py-10">ไม่มีรายการ</p>
+  </div>
+</main>
+
+<!-- ================= ADMIN DETAIL MODAL ================= -->
+<div id="detailModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-5 sm:p-6 fade-in my-8" id="detailBody"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[1000] bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg"></div>
+
+<footer class="text-center text-xs text-gray-400 py-8">ระบบจำลองเพื่อการสาธิต · เซสชันหมดอายุอัตโนมัติเมื่อไม่ได้ใช้งาน 30 นาที</footer>
+
+<script src="shared.js"></script>
+<script>
+// ====================== ระบบหลังบ้านเจ้าหน้าที่ (Admin) ======================
+// แยกออกมาจาก index.html: หน้าประชาชนไม่มีโค้ดหรือข้อมูลล็อกอินส่วนนี้อยู่เลย
+// หมายเหตุ: นี่คือระบบสาธิตที่ทำงานฝั่งเบราว์เซอร์ทั้งหมด จึงยังไม่ใช่การยืนยันตัวตนที่ปลอดภัยจริง
+// หากใช้งานจริงต้องย้ายการตรวจสอบสิทธิ์ไปไว้ฝั่งเซิร์ฟเวอร์
+
+const AUTH_KEY = 'infra_admin_session';          // เก็บเวลาหมดอายุของเซสชัน (sessionStorage)
+const SESSION_MS = 30 * 60 * 1000;               // หมดอายุหลังไม่ได้ใช้งาน 30 นาที
+// เก็บเฉพาะค่าแฮช SHA-256 ของ "salt:username:password" ไม่เก็บรหัสผ่านเป็นข้อความตรงๆ
+const ADMIN_HASH = '2232abdb64a335ac7ec896d9f956532c3e3ee5a122addfdba320dad677a653d6';
+const HASH_SALT = 'infra-admin-v1';
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function sessionValid() {
+  const t = Number(sessionStorage.getItem(AUTH_KEY));
+  return !!t && Date.now() < t;
+}
+function touchSession() {
+  if (sessionValid()) sessionStorage.setItem(AUTH_KEY, String(Date.now() + SESSION_MS));
+}
+function requireAdmin() {
+  if (sessionValid()) { touchSession(); return true; }
+  logout('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+  return false;
+}
+
+$('adminFilter').innerHTML = opt('', 'ทุกสถานะ') + STATUSES.map(s => opt(s)).join('');
+$('adminUrgency').innerHTML = opt('', 'ทุกระดับความเร่งด่วน') + URGENCIES.map(s => opt(s)).join('');
+
+function renderHeader() {
+  const back = `<a href="index.html" class="text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">หน้าประชาชน</a>`;
+  $('headerActions').innerHTML = themeButton() + back +
+    (sessionValid() ? `<button onclick="logout()" class="text-sm bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100">ออกจากระบบ</button>` : '');
+}
+function route(message) {
+  const ok = sessionValid();
+  $('loginView').classList.toggle('hidden', ok);
+  $('adminView').classList.toggle('hidden', !ok);
+  renderHeader();
+  if (ok) renderAdmin();
+  else {
+    $('loginForm').reset();
+    if (message) showLoginError(message);
+    setTimeout(() => $('lUser').focus(), 50);
+  }
+}
+function showLoginError(msg) {
+  const el = $('loginError');
+  el.textContent = msg; el.classList.remove('hidden');
+}
+
+// ====================== Auth ======================
+let failCount = 0, lockUntil = 0;
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('loginError').classList.add('hidden');
+  if (Date.now() < lockUntil) {
+    return showLoginError(`ลองผิดหลายครั้งเกินไป กรุณารอ ${Math.ceil((lockUntil - Date.now()) / 1000)} วินาที`);
+  }
+  if (!(window.crypto && crypto.subtle)) {
+    return showLoginError('เบราว์เซอร์ไม่รองรับการเข้ารหัส (ต้องเปิดผ่านลิงก์ HTTPS หรือ localhost)');
+  }
+  const hash = await sha256(`${HASH_SALT}:${$('lUser').value}:${$('lPass').value}`);
+  if (hash === ADMIN_HASH) {
+    failCount = 0;
+    sessionStorage.setItem(AUTH_KEY, String(Date.now() + SESSION_MS));
+    route();
+    toast('เข้าสู่ระบบสำเร็จ');
+  } else {
+    failCount++;
+    if (failCount >= 5) { lockUntil = Date.now() + 30000; failCount = 0; }
+    showLoginError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    alert('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+  }
+});
+function logout(message) {
+  sessionStorage.removeItem(AUTH_KEY);
+  closeDetail();
+  route(typeof message === 'string' ? message : '');
+  if (typeof message !== 'string') toast('ออกจากระบบแล้ว');
+}
+// ต่ออายุเซสชันเมื่อมีการใช้งาน และตรวจสอบการหมดอายุทุก 30 วินาที
+['click', 'keydown'].forEach(ev => document.addEventListener(ev, touchSession));
+setInterval(() => {
+  if (!$('adminView').classList.contains('hidden') && !sessionValid()) logout('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+}, 30000);
+
+// ====================== Dashboard ======================
+function getAdminList() {
+  const f = $('adminFilter').value, u = $('adminUrgency').value;
+  return issues
+    .filter(i => (!f || i.status === f) && (!u || i.urgency === u))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+function renderCharts() {
+  // by category
+  const counts = CATEGORIES.map(c => [c, issues.filter(i => i.category === c).length]);
+  const max = Math.max(1, ...counts.map(c => c[1]));
+  $('chartCategory').innerHTML = counts.map(([c, n]) => `
+    <div>
+      <div class="flex justify-between text-xs text-gray-600 mb-0.5"><span>${esc(c)}</span><span>${n}</span></div>
+      <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-brand-500 rounded-full" style="width:${(n / max) * 100}%"></div></div>
+    </div>`).join('');
+  // last 7 days
+  const days = [];
+  for (let k = 6; k >= 0; k--) {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - k);
+    const next = new Date(d); next.setDate(next.getDate() + 1);
+    const n = issues.filter(i => { const t = new Date(i.createdAt); return t >= d && t < next; }).length;
+    days.push({ label: d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }), n });
+  }
+  const dmax = Math.max(1, ...days.map(d => d.n));
+  $('chartDays').innerHTML = days.map(d => `
+    <div class="flex-1 flex flex-col items-center justify-end h-full">
+      <span class="text-xs text-gray-600 mb-1">${d.n}</span>
+      <div class="w-full max-w-[34px] bg-brand-500 rounded-t-md" style="height:${Math.max(4, (d.n / dmax) * 80)}%"></div>
+      <span class="text-[10px] text-gray-400 mt-1 whitespace-nowrap">${esc(d.label)}</span>
+    </div>`).join('');
+}
+function renderAdmin() {
+  const count = s => issues.filter(i => i.status === s).length;
+  const cards = [
+    ['ทั้งหมด', issues.length, 'bg-brand-50 text-brand-700 border-brand-200'],
+    ['รอดำเนินการ', count(STATUSES[0]), 'bg-orange-50 text-orange-700 border-orange-200'],
+    ['กำลังดำเนินการ', count(STATUSES[1]), 'bg-sky-50 text-sky-700 border-sky-200'],
+    ['แก้ไขเสร็จสิ้น', count(STATUSES[2]), 'bg-green-50 text-green-700 border-green-200']
+  ];
+  $('summary').innerHTML = cards.map(([t, n, cls]) => `
+    <div class="rounded-2xl border p-4 ${cls}">
+      <p class="text-sm opacity-80">${t}</p>
+      <p class="text-3xl font-semibold mt-1">${n}</p>
+    </div>`).join('');
+  renderCharts();
+
+  const list = getAdminList();
+  $('adminEmpty').classList.toggle('hidden', list.length > 0);
+  $('adminTable').innerHTML = list.map(i => `
+    <tr class="hover:bg-gray-50 align-top">
+      <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">${esc(i.id)}</td>
+      <td class="px-4 py-3">${i.image ? `<img src="${i.image}" class="w-14 h-14 rounded-lg object-cover border">` : '<div class="w-14 h-14 rounded-lg bg-gray-100"></div>'}</td>
+      <td class="px-4 py-3 max-w-xs">
+        <p class="font-medium text-gray-800">${esc(i.category)} ${urgencyBadge(i.urgency)}</p>
+        <p class="text-xs text-gray-500 line-clamp-2">${esc(i.description)}</p>
+        <p class="text-xs text-gray-400 mt-0.5">👍 ${i.votes}${i.lat != null ? ' · 📌 มีพิกัด' : ''}${i.afterImage ? ' · ✅ มีรูปหลังแก้ไข' : ''}</p>
+      </td>
+      <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(i.createdAt)}</td>
+      <td class="px-4 py-3">${badge(i.status)}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">
+        <button onclick="openDetail('${i.id}')" class="text-brand-700 border border-brand-200 bg-brand-50 hover:bg-brand-100 text-xs px-3 py-1.5 rounded-lg">จัดการ</button>
+        <button onclick="deleteIssue('${i.id}')" class="text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 text-xs px-3 py-1.5 rounded-lg">ลบ</button>
+      </td>
+    </tr>`).join('');
+}
+$('adminFilter').addEventListener('change', renderAdmin);
+$('adminUrgency').addEventListener('change', renderAdmin);
+
+// ---- CSV export (respects current admin filters) ----
+function exportCSV() {
+  if (!requireAdmin()) return;
+  const list = getAdminList();
+  const head = ['รหัสรับแจ้ง', 'วันที่แจ้ง', 'ชื่อผู้แจ้ง', 'เบอร์ติดต่อ', 'หมวดหมู่', 'รายละเอียด', 'สถานที่', 'ละติจูด', 'ลองจิจูด', 'ความเร่งด่วน', 'สถานะ', 'หมายเหตุ/ผลการดำเนินการ', 'จำนวนโหวต', 'อัปเดตล่าสุด'];
+  const rows = list.map(i => [i.id, fmtDate(i.createdAt), i.name, i.phone, i.category, i.description, i.location, i.lat ?? '', i.lng ?? '', i.urgency, i.status, i.note, i.votes, fmtDate(i.updatedAt)]);
+  const cell = v => {
+    let s = String(v ?? '');
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; // prevent spreadsheet formula injection
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const csv = '﻿' + [head, ...rows].map(r => r.map(cell).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `issues-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`ส่งออก ${list.length} รายการแล้ว`);
+}
+
+// ---- Admin detail modal ----
+let pendingAfter = '';
+function openDetail(id) {
+  if (!requireAdmin()) return;
+  const i = issues.find(x => x.id === id);
+  if (!i) return;
+  pendingAfter = '';
+  destroyMini();
+  $('detailBody').innerHTML = `
+    <div class="flex justify-between items-start mb-3">
+      <div>
+        <p class="text-xs font-mono text-gray-500">${esc(i.id)}</p>
+        <h3 class="text-lg font-semibold text-brand-800">${esc(i.category)}</h3>
+      </div>
+      <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+    </div>
+    ${i.image ? `<img src="${i.image}" class="w-full max-h-72 object-cover rounded-xl border mb-3">` : ''}
+    <div class="space-y-1.5 text-sm mb-4">
+      <p><span class="text-gray-500">รายละเอียด:</span> ${esc(i.description)}</p>
+      <p><span class="text-gray-500">สถานที่:</span> ${esc(i.location)}</p>
+      <p><span class="text-gray-500">ผู้แจ้ง:</span> ${esc(i.name || 'ไม่ระบุชื่อ')} ${i.phone ? '· ' + esc(i.phone) : ''}</p>
+      <p><span class="text-gray-500">แจ้งเมื่อ:</span> ${fmtDate(i.createdAt)} · <span class="text-gray-500">อัปเดตล่าสุด:</span> ${fmtDate(i.updatedAt)} · 👍 ${i.votes}</p>
+    </div>
+    ${i.lat != null ? `<div id="miniMapA" class="h-44 w-full border border-gray-200 rounded-xl mb-4"></div>` : ''}
+    <div class="grid sm:grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-sm text-gray-600">สถานะงาน</label>
+        <select id="dStatus" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          ${STATUSES.map(s => `<option value="${s}" ${s === i.status ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="text-sm text-gray-600">ความเร่งด่วน</label>
+        <select id="dUrgency" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          ${URGENCIES.map(s => `<option value="${s}" ${s === i.urgency ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="text-sm text-gray-600">หมายเหตุ / ผลการดำเนินการ (แสดงให้ประชาชนเห็น)</label>
+      <textarea id="dNote" rows="3" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">${esc(i.note)}</textarea>
+    </div>
+    <div class="mb-4">
+      <label class="text-sm text-gray-600">รูปหลังแก้ไข (แสดงให้ประชาชนเห็น)</label>
+      <input id="dAfter" type="file" accept="image/*" class="mt-1 w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+      <img id="dAfterPrev" src="${i.afterImage || ''}" class="${i.afterImage ? '' : 'hidden'} mt-2 rounded-lg max-h-40 object-cover border">
+      ${i.afterImage ? `<label class="text-xs text-gray-500 flex items-center gap-1.5 mt-1"><input type="checkbox" id="dRemoveAfter"> ลบรูปหลังแก้ไขเดิม</label>` : ''}
+    </div>
+    <h4 class="font-semibold text-gray-700 mb-2 text-sm">ประวัติสถานะ</h4>
+    <div class="mb-4">${timelineHTML(i)}</div>
+    <div class="flex flex-wrap gap-2 justify-between">
+      <button onclick="deleteIssue('${i.id}', true)" class="text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 text-sm px-4 py-2 rounded-lg">🗑️ ลบรายการ</button>
+      <div class="flex gap-2">
+        <button onclick="closeDetail()" class="border border-gray-300 text-sm px-4 py-2 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+        <button onclick="saveDetail('${i.id}')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg">บันทึก</button>
+      </div>
+    </div>`;
+  $('dAfter').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) { pendingAfter = ''; return; }
+    try {
+      pendingAfter = await fileToBase64(f);
+      const p = $('dAfterPrev'); p.src = pendingAfter; p.classList.remove('hidden');
+    } catch (err) { toast('ไม่สามารถอ่านไฟล์รูปภาพได้'); pendingAfter = ''; }
+  });
+  $('detailModal').classList.remove('hidden');
+  showMiniMap('miniMapA', i);
+}
+function closeDetail() {
+  destroyMini();
+  $('detailModal').classList.add('hidden');
+}
+$('detailModal').addEventListener('click', e => { if (e.target === $('detailModal')) closeDetail(); });
+function saveDetail(id) {
+  if (!requireAdmin()) return;
+  const i = issues.find(x => x.id === id);
+  if (!i) return;
+  const newStatus = $('dStatus').value;
+  const newNote = $('dNote').value.trim();
+  const removeAfter = $('dRemoveAfter') && $('dRemoveAfter').checked;
+  const changed = newStatus !== i.status || newNote !== i.note;
+  const afterChanged = !!pendingAfter || removeAfter;
+  const now = new Date().toISOString();
+
+  i.urgency = $('dUrgency').value;
+  if (pendingAfter) i.afterImage = pendingAfter;
+  else if (removeAfter) i.afterImage = '';
+  if (changed || afterChanged) {
+    i.history.push({ status: newStatus, note: newNote || (pendingAfter ? 'เพิ่มรูปหลังแก้ไข' : ''), at: now });
+  }
+  i.status = newStatus;
+  i.note = newNote;
+  i.updatedAt = now;
+  if (saveIssues(issues)) { closeDetail(); renderAdmin(); toast('บันทึกการอัปเดตแล้ว'); }
+}
+function deleteIssue(id, fromModal) {
+  if (!requireAdmin()) return;
+  if (!confirm(`ต้องการลบรายการ ${id} ใช่หรือไม่? การลบไม่สามารถกู้คืนได้`)) return;
+  issues = issues.filter(x => x.id !== id);
+  saveIssues(issues);
+  if (fromModal) closeDetail();
+  renderAdmin();
+  toast('ลบรายการแล้ว');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+// เมื่อมีคนแจ้งเรื่องใหม่จากอีกแท็บ ให้รีเฟรชตารางอัตโนมัติ
+window.addEventListener('storage', e => {
+  if (e.key === DB_KEY) {
+    issues = loadIssues();
+    if (sessionValid() && $('detailModal').classList.contains('hidden')) renderAdmin();
+  }
+});
+
+// ====================== Boot ======================
+route();
+</script>
+</body>
+</html>
