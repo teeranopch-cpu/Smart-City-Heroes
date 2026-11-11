@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบแจ้งปัญหาโครงสร้างพื้นฐานและสาธารณูปโภค</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Prompt', 'sans-serif'] },
+        colors: { brand: { 50:'#ecfdf5',100:'#d1fae5',200:'#a7f3d0',500:'#10b981',600:'#059669',700:'#047857',800:'#065f46',900:'#064e3b' } }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: 'Prompt', sans-serif; }
+  .fade-in { animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none; } }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+<!-- Header -->
+<header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="showView('public')">
+      <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center text-xl">🏙️</div>
+      <div>
+        <h1 class="font-semibold text-brand-800 leading-tight text-base sm:text-lg">แจ้งปัญหาโครงสร้างพื้นฐาน</h1>
+        <p class="text-xs text-gray-500 hidden sm:block">ระบบรับแจ้งและติดตามปัญหาสาธารณูปโภค</p>
+      </div>
+    </div>
+    <div id="headerActions" class="flex items-center gap-2"></div>
+  </div>
+</header>
+
+<!-- ================= PUBLIC VIEW ================= -->
+<main id="publicView" class="max-w-6xl mx-auto px-4 py-6">
+  <section class="bg-gradient-to-r from-brand-700 to-brand-500 text-white rounded-2xl p-6 sm:p-8 mb-6 shadow">
+    <h2 class="text-2xl sm:text-3xl font-semibold mb-2">พบปัญหาในชุมชน? แจ้งเราได้ทันที</h2>
+    <p class="text-brand-100 mb-4 text-sm sm:text-base">ถนนชำรุด ไฟดับ น้ำท่วมขัง สายไฟรกรุงรัง — แจ้งพร้อมรูปภาพและตำแหน่ง แล้วติดตามความคืบหน้าได้ที่นี่</p>
+    <button onclick="document.getElementById('reportCard').scrollIntoView({behavior:'smooth'})" class="bg-white text-brand-700 font-medium px-5 py-2 rounded-lg hover:bg-brand-50 transition">+ แจ้งปัญหาใหม่</button>
+  </section>
+
+  <div class="grid lg:grid-cols-3 gap-6">
+    <!-- Report form -->
+    <section id="reportCard" class="lg:col-span-1">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 lg:sticky lg:top-24">
+        <h3 class="text-lg font-semibold text-brand-800 mb-4">📝 แจ้งปัญหา</h3>
+        <form id="reportForm" class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm text-gray-600">ชื่อผู้แจ้ง <span class="text-gray-400">(ไม่บังคับ)</span></label>
+              <input id="fName" type="text" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+            <div>
+              <label class="text-sm text-gray-600">เบอร์ติดต่อ <span class="text-gray-400">(ไม่บังคับ)</span></label>
+              <input id="fPhone" type="tel" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">หมวดหมู่ปัญหา <span class="text-red-500">*</span></label>
+            <select id="fCategory" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"></select>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">รายละเอียดปัญหา <span class="text-red-500">*</span></label>
+            <textarea id="fDesc" required rows="3" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="อธิบายปัญหาที่พบ..."></textarea>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">สถานที่ / จุดสังเกต / พิกัด <span class="text-red-500">*</span></label>
+            <div class="flex gap-2 mt-1">
+              <input id="fLocation" required type="text" class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="เช่น ซอยลาดพร้าว 71 หน้าร้านสะดวกซื้อ">
+              <button type="button" onclick="mockGPS()" class="shrink-0 bg-brand-50 text-brand-700 border border-brand-200 px-3 rounded-lg text-sm hover:bg-brand-100">📍 GPS</button>
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">รูปภาพประกอบ</label>
+            <input id="fImage" type="file" accept="image/*" class="mt-1 w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+            <img id="imgPreview" class="hidden mt-2 rounded-lg max-h-40 object-cover border">
+          </div>
+          <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg transition">ส่งเรื่องแจ้งปัญหา</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Feed -->
+    <section class="lg:col-span-2">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4">
+        <h3 class="text-lg font-semibold text-brand-800 mb-3">📋 ติดตามสถานะเรื่องร้องเรียน</h3>
+        <div class="grid sm:grid-cols-3 gap-2">
+          <input id="searchBox" type="text" placeholder="🔍 ค้นหารหัสรับแจ้ง เช่น TF-..." class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+          <select id="filterCategory" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+          <select id="filterStatus" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+        </div>
+      </div>
+      <div id="feed" class="grid sm:grid-cols-2 gap-4"></div>
+      <p id="feedEmpty" class="hidden text-center text-gray-400 py-12">ไม่พบรายการที่ตรงกับเงื่อนไข</p>
+    </section>
+  </div>
+</main>
+
+<!-- ================= ADMIN VIEW ================= -->
+<main id="adminView" class="hidden max-w-6xl mx-auto px-4 py-6">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-xl font-semibold text-brand-800">🛠️ แผงควบคุมเจ้าหน้าที่</h2>
+  </div>
+  <div id="summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"></div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="p-4 border-b border-gray-100 flex flex-wrap gap-2 items-center justify-between">
+      <h3 class="font-semibold text-gray-700">ตารางจัดการเรื่องร้องเรียน</h3>
+      <select id="adminFilter" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white"></select>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-500 text-left">
+          <tr>
+            <th class="px-4 py-3">รหัส</th>
+            <th class="px-4 py-3">รูป</th>
+            <th class="px-4 py-3">หมวดหมู่ / รายละเอียด</th>
+            <th class="px-4 py-3">วันที่แจ้ง</th>
+            <th class="px-4 py-3">สถานะ</th>
+            <th class="px-4 py-3 text-right">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="adminTable" class="divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+    <p id="adminEmpty" class="hidden text-center text-gray-400 py-10">ไม่มีรายการ</p>
+  </div>
+</main>
+
+<!-- ================= LOGIN MODAL ================= -->
+<div id="loginModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 fade-in">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-semibold text-brand-800">🔐 เข้าสู่ระบบเจ้าหน้าที่</h3>
+      <button onclick="closeLogin()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+    </div>
+    <form id="loginForm" class="space-y-3">
+      <div>
+        <label class="text-sm text-gray-600">ชื่อผู้ใช้ (Username)</label>
+        <input id="lUser" type="text" autocomplete="off" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+      </div>
+      <div>
+        <label class="text-sm text-gray-600">รหัสผ่าน (Password)</label>
+        <input id="lPass" type="password" autocomplete="off" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+      </div>
+      <p id="loginError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</p>
+      <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg">เข้าสู่ระบบ</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= DETAIL MODAL ================= -->
+<div id="detailModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-5 sm:p-6 fade-in my-8" id="detailBody"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg"></div>
+
+<footer class="text-center text-xs text-gray-400 py-8">ระบบจำลองเพื่อการสาธิต · ข้อมูลเก็บใน LocalStorage ของเบราว์เซอร์</footer>
+
+<script>
+const CATEGORIES = [
+  'ถนน/ทางเท้าชำรุด',
+  'ไฟฟ้าส่องสว่างดับ',
+  'ท่อระบายน้ำตัน/น้ำท่วม',
+  'โครงสร้างอาคาร/สะพานชำรุด',
+  'สายไฟ/สายสื่อสารรกรุงรัง',
+  'อื่นๆ'
+];
+const STATUSES = ['รอดำเนินการ', 'กำลังดำเนินการ', 'แก้ไขเสร็จสิ้น'];
+const STATUS_STYLE = {
+  'รอดำเนินการ': 'bg-orange-100 text-orange-700 border-orange-200',
+  'กำลังดำเนินการ': 'bg-sky-100 text-sky-700 border-sky-200',
+  'แก้ไขเสร็จสิ้น': 'bg-green-100 text-green-700 border-green-200'
+};
+const DB_KEY = 'infra_issues_v1';
+const AUTH_KEY = 'infra_admin_session';
+
+// ---------- Utilities ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function placeholderImg(emoji, c1, c2) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="600" height="400" fill="url(#g)"/><text x="300" y="240" font-size="140" text-anchor="middle">${emoji}</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleString('th-TH', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 2600);
+}
+function genTicketId(issues) {
+  const d = new Date();
+  const base = `TF-${String(d.getFullYear()).slice(2)}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  let id;
+  do { id = `${base}-${Math.floor(1000 + Math.random()*9000)}`; } while (issues.some(i => i.id === id));
+  return id;
+}
+
+// ---------- Data layer (LocalStorage) ----------
+function seedData() {
+  const now = Date.now();
+  const h = n => new Date(now - n * 3600 * 1000).toISOString();
+  return [
+    { id:'TF-261108-1024', name:'สมชาย ใจดี', phone:'081-234-5678', category:CATEGORIES[0],
+      description:'ผิวถนนเป็นหลุมลึกขนาดใหญ่ รถจักรยานยนต์เสี่ยงล้ม โดยเฉพาะตอนกลางคืน',
+      location:'ถนนลาดพร้าว ซอย 71 ใกล้ทางเข้าตลาด (13.7956, 100.6101)',
+      image: placeholderImg('🕳️','#d1d5db','#9ca3af'), status:'รอดำเนินการ', note:'', createdAt:h(52), updatedAt:h(52) },
+    { id:'TF-261109-2381', name:'', phone:'', category:CATEGORIES[1],
+      description:'ไฟถนนดับต่อเนื่องกัน 5 ต้น ทำให้ซอยมืดมาก เสี่ยงต่อความปลอดภัย',
+      location:'ซอยสุขุมวิท 101/1 ช่วงหน้าโรงเรียน',
+      image: placeholderImg('💡','#fde68a','#92400e'), status:'กำลังดำเนินการ', note:'ช่างไฟฟ้าลงพื้นที่ตรวจสอบแล้ว รอเปลี่ยนหลอดและตรวจสอบสายไฟ คาดว่าเสร็จภายใน 2 วัน', createdAt:h(30), updatedAt:h(8) },
+    { id:'TF-261105-7712', name:'วิภา รักษ์ถิ่น', phone:'089-876-5432', category:CATEGORIES[2],
+      description:'ท่อระบายน้ำอุดตัน น้ำท่วมขังหลังฝนตกทุกครั้ง ส่งกลิ่นเหม็น',
+      location:'ถนนเพชรเกษม หน้าซอย 48',
+      image: placeholderImg('🌊','#bae6fd','#0369a1'), status:'แก้ไขเสร็จสิ้น', note:'เจ้าหน้าที่ดูดสิ่งอุดตันและล้างท่อระบายน้ำเรียบร้อยแล้ว', createdAt:h(110), updatedAt:h(60) },
+    { id:'TF-261110-5590', name:'ประเสริฐ มั่นคง', phone:'', category:CATEGORIES[4],
+      description:'สายสื่อสารห้อยต่ำเกือบถึงพื้น เสี่ยงอันตรายต่อรถบรรทุกและคนเดินเท้า',
+      location:'ถนนจรัญสนิทวงศ์ หน้าปั๊มน้ำมัน',
+      image: placeholderImg('🔌','#d9f99d','#3f6212'), status:'รอดำเนินการ', note:'', createdAt:h(5), updatedAt:h(5) }
+  ];
+}
+function loadIssues() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  const seeded = seedData();
+  saveIssues(seeded);
+  return seeded;
+}
+function saveIssues(list) {
+  try { localStorage.setItem(DB_KEY, JSON.stringify(list)); return true; }
+  catch (e) { toast('บันทึกไม่สำเร็จ: พื้นที่จัดเก็บเต็ม'); return false; }
+}
+let issues = loadIssues();
+let isAdmin = sessionStorage.getItem(AUTH_KEY) === '1';
+
+// ---------- Init selects ----------
+function opt(v, t) { return `<option value="${esc(v)}">${esc(t ?? v)}</option>`; }
+$('fCategory').innerHTML = opt('', '-- เลือกหมวดหมู่ --') + CATEGORIES.map(c => opt(c)).join('');
+$('filterCategory').innerHTML = opt('', 'ทุกหมวดหมู่') + CATEGORIES.map(c => opt(c)).join('');
+$('filterStatus').innerHTML = opt('', 'ทุกสถานะ') + STATUSES.map(s => opt(s)).join('');
+$('adminFilter').innerHTML = opt('', 'ทุกสถานะ') + STATUSES.map(s => opt(s)).join('');
+
+// ---------- View switching / header ----------
+function renderHeader() {
+  $('headerActions').innerHTML = isAdmin
+    ? `<span class="hidden sm:inline text-sm text-gray-500">เจ้าหน้าที่</span>
+       <button onclick="showView('public')" class="text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">หน้าประชาชน</button>
+       <button onclick="logout()" class="text-sm bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100">ออกจากระบบ</button>`
+    : `<button onclick="openLogin()" class="text-sm bg-brand-700 text-white px-3 py-1.5 rounded-lg hover:bg-brand-800">🔐 สำหรับเจ้าหน้าที่ (Admin Login)</button>`;
+}
+function showView(v) {
+  if (v === 'admin' && !isAdmin) return openLogin();
+  $('publicView').classList.toggle('hidden', v !== 'public');
+  $('adminView').classList.toggle('hidden', v !== 'admin');
+  renderHeader();
+  window.scrollTo({ top: 0 });
+  if (v === 'admin') renderAdmin(); else renderFeed();
+}
+
+// ---------- Report form ----------
+function mockGPS() {
+  const lat = (13.65 + Math.random() * 0.2).toFixed(6);
+  const lng = (100.45 + Math.random() * 0.2).toFixed(6);
+  const cur = $('fLocation').value.trim();
+  const coords = `พิกัด ${lat}, ${lng}`;
+  $('fLocation').value = cur ? `${cur} (${lat}, ${lng})` : coords;
+  toast('ดึงพิกัดจำลองสำเร็จ 📍');
+}
+// Resize image to keep LocalStorage small, output Base64
+function fileToBase64(file, maxW = 800) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', 0.75));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+let pendingImage = '';
+$('fImage').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  const prev = $('imgPreview');
+  if (!f) { pendingImage = ''; prev.classList.add('hidden'); return; }
+  try {
+    pendingImage = await fileToBase64(f);
+    prev.src = pendingImage; prev.classList.remove('hidden');
+  } catch (err) { toast('ไม่สามารถอ่านไฟล์รูปภาพได้'); pendingImage = ''; }
+});
+$('reportForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const issue = {
+    id: genTicketId(issues),
+    name: $('fName').value.trim(),
+    phone: $('fPhone').value.trim(),
+    category: $('fCategory').value,
+    description: $('fDesc').value.trim(),
+    location: $('fLocation').value.trim(),
+    image: pendingImage,
+    status: 'รอดำเนินการ',
+    note: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  issues.unshift(issue);
+  if (!saveIssues(issues)) { issues.shift(); return; }
+  e.target.reset(); pendingImage = ''; $('imgPreview').classList.add('hidden');
+  renderFeed();
+  toast(`ส่งเรื่องสำเร็จ! รหัสรับแจ้ง ${issue.id}`);
+  document.getElementById('feed').scrollIntoView({ behavior: 'smooth' });
+});
+
+// ---------- Public feed ----------
+function badge(status) {
+  return `<span class="inline-block text-xs px-2.5 py-1 rounded-full border font-medium ${STATUS_STYLE[status]}">${esc(status)}</span>`;
+}
+function renderFeed() {
+  const q = $('searchBox').value.trim().toLowerCase();
+  const cat = $('filterCategory').value;
+  const st = $('filterStatus').value;
+  const list = issues
+    .filter(i => (!q || i.id.toLowerCase().includes(q)) && (!cat || i.category === cat) && (!st || i.status === st))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  $('feedEmpty').classList.toggle('hidden', list.length > 0);
+  $('feed').innerHTML = list.map(i => `
+    <article class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col fade-in">
+      ${i.image
+        ? `<img src="${i.image}" alt="" class="h-44 w-full object-cover">`
+        : `<div class="h-44 w-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">ไม่มีรูปภาพ</div>`}
+      <div class="p-4 flex flex-col gap-2 flex-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-mono text-gray-500">${esc(i.id)}</span>
+          ${badge(i.status)}
+        </div>
+        <h4 class="font-semibold text-brand-800">${esc(i.category)}</h4>
+        <p class="text-sm text-gray-600 line-clamp-2">${esc(i.description)}</p>
+        <p class="text-xs text-gray-500">📍 ${esc(i.location)}</p>
+        <p class="text-xs text-gray-400">🕒 ${fmtDate(i.createdAt)}</p>
+        ${i.note ? `<div class="mt-1 bg-brand-50 border border-brand-100 rounded-lg p-2.5 text-xs text-brand-800"><span class="font-medium">ผลการดำเนินการ:</span> ${esc(i.note)}</div>` : ''}
+      </div>
+    </article>`).join('');
+}
+['input','change'].forEach(ev => {
+  $('searchBox').addEventListener(ev, renderFeed);
+  $('filterCategory').addEventListener(ev, renderFeed);
+  $('filterStatus').addEventListener(ev, renderFeed);
+});
+
+// ---------- Admin auth ----------
+function openLogin() {
+  $('loginError').classList.add('hidden');
+  $('loginForm').reset();
+  $('loginModal').classList.remove('hidden');
+  setTimeout(() => $('lUser').focus(), 50);
+}
+function closeLogin() { $('loginModal').classList.add('hidden'); }
+$('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if ($('lUser').value === '0000' && $('lPass').value === '0000') {
+    isAdmin = true;
+    sessionStorage.setItem(AUTH_KEY, '1');
+    closeLogin();
+    showView('admin');
+    toast('เข้าสู่ระบบสำเร็จ');
+  } else {
+    $('loginError').classList.remove('hidden');
+    alert('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+  }
+});
+function logout() {
+  isAdmin = false;
+  sessionStorage.removeItem(AUTH_KEY);
+  closeDetail();
+  showView('public');
+  toast('ออกจากระบบแล้ว');
+}
+$('loginModal').addEventListener('click', e => { if (e.target === $('loginModal')) closeLogin(); });
+
+// ---------- Admin dashboard ----------
+function renderAdmin() {
+  const count = s => issues.filter(i => i.status === s).length;
+  const cards = [
+    ['ทั้งหมด', issues.length, 'bg-brand-50 text-brand-700 border-brand-200'],
+    ['รอดำเนินการ', count(STATUSES[0]), 'bg-orange-50 text-orange-700 border-orange-200'],
+    ['กำลังดำเนินการ', count(STATUSES[1]), 'bg-sky-50 text-sky-700 border-sky-200'],
+    ['แก้ไขเสร็จสิ้น', count(STATUSES[2]), 'bg-green-50 text-green-700 border-green-200']
+  ];
+  $('summary').innerHTML = cards.map(([t, n, cls]) => `
+    <div class="rounded-2xl border p-4 ${cls}">
+      <p class="text-sm opacity-80">${t}</p>
+      <p class="text-3xl font-semibold mt-1">${n}</p>
+    </div>`).join('');
+
+  const f = $('adminFilter').value;
+  const list = issues.filter(i => !f || i.status === f).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  $('adminEmpty').classList.toggle('hidden', list.length > 0);
+  $('adminTable').innerHTML = list.map(i => `
+    <tr class="hover:bg-gray-50 align-top">
+      <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">${esc(i.id)}</td>
+      <td class="px-4 py-3">${i.image ? `<img src="${i.image}" class="w-14 h-14 rounded-lg object-cover border">` : '<div class="w-14 h-14 rounded-lg bg-gray-100"></div>'}</td>
+      <td class="px-4 py-3 max-w-xs">
+        <p class="font-medium text-gray-800">${esc(i.category)}</p>
+        <p class="text-xs text-gray-500 line-clamp-2">${esc(i.description)}</p>
+      </td>
+      <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(i.createdAt)}</td>
+      <td class="px-4 py-3">${badge(i.status)}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">
+        <button onclick="openDetail('${i.id}')" class="text-brand-700 border border-brand-200 bg-brand-50 hover:bg-brand-100 text-xs px-3 py-1.5 rounded-lg">จัดการ</button>
+        <button onclick="deleteIssue('${i.id}')" class="text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 text-xs px-3 py-1.5 rounded-lg">ลบ</button>
+      </td>
+    </tr>`).join('');
+}
+$('adminFilter').addEventListener('change', renderAdmin);
+
+function openDetail(id) {
+  const i = issues.find(x => x.id === id);
+  if (!i) return;
+  $('detailBody').innerHTML = `
+    <div class="flex justify-between items-start mb-3">
+      <div>
+        <p class="text-xs font-mono text-gray-500">${esc(i.id)}</p>
+        <h3 class="text-lg font-semibold text-brand-800">${esc(i.category)}</h3>
+      </div>
+      <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+    </div>
+    ${i.image ? `<img src="${i.image}" class="w-full max-h-72 object-cover rounded-xl border mb-3">` : ''}
+    <div class="space-y-1.5 text-sm mb-4">
+      <p><span class="text-gray-500">รายละเอียด:</span> ${esc(i.description)}</p>
+      <p><span class="text-gray-500">สถานที่:</span> ${esc(i.location)}</p>
+      <p><span class="text-gray-500">ผู้แจ้ง:</span> ${esc(i.name || 'ไม่ระบุชื่อ')} ${i.phone ? '· ' + esc(i.phone) : ''}</p>
+      <p><span class="text-gray-500">แจ้งเมื่อ:</span> ${fmtDate(i.createdAt)} · <span class="text-gray-500">อัปเดตล่าสุด:</span> ${fmtDate(i.updatedAt)}</p>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-sm text-gray-600">สถานะงาน</label>
+        <select id="dStatus" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          ${STATUSES.map(s => `<option value="${s}" ${s === i.status ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="flex items-end"><div>${badge(i.status)}</div></div>
+    </div>
+    <div class="mb-4">
+      <label class="text-sm text-gray-600">หมายเหตุ / ผลการดำเนินการ (แสดงให้ประชาชนเห็น)</label>
+      <textarea id="dNote" rows="3" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">${esc(i.note)}</textarea>
+    </div>
+    <div class="flex flex-wrap gap-2 justify-between">
+      <button onclick="deleteIssue('${i.id}', true)" class="text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 text-sm px-4 py-2 rounded-lg">🗑️ ลบรายการ</button>
+      <div class="flex gap-2">
+        <button onclick="closeDetail()" class="border border-gray-300 text-sm px-4 py-2 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+        <button onclick="saveDetail('${i.id}')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg">บันทึก</button>
+      </div>
+    </div>`;
+  $('detailModal').classList.remove('hidden');
+}
+function closeDetail() { $('detailModal').classList.add('hidden'); }
+$('detailModal').addEventListener('click', e => { if (e.target === $('detailModal')) closeDetail(); });
+function saveDetail(id) {
+  if (!isAdmin) return;
+  const i = issues.find(x => x.id === id);
+  if (!i) return;
+  i.status = $('dStatus').value;
+  i.note = $('dNote').value.trim();
+  i.updatedAt = new Date().toISOString();
+  if (saveIssues(issues)) { closeDetail(); renderAdmin(); toast('บันทึกการอัปเดตแล้ว'); }
+}
+function deleteIssue(id, fromModal) {
+  if (!isAdmin) return;
+  if (!confirm(`ต้องการลบรายการ ${id} ใช่หรือไม่? การลบไม่สามารถกู้คืนได้`)) return;
+  issues = issues.filter(x => x.id !== id);
+  saveIssues(issues);
+  if (fromModal) closeDetail();
+  renderAdmin();
+  toast('ลบรายการแล้ว');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLogin(); closeDetail(); } });
+
+// ---------- Boot ----------
+showView(isAdmin ? 'admin' : 'public');
+</script>
+</body>
+</html>
