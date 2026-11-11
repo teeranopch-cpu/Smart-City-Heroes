@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบแจ้งปัญหาโครงสร้างพื้นฐานและสาธารณูปโภค</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -22,6 +24,38 @@
   body { font-family: 'Prompt', sans-serif; }
   .fade-in { animation: fadeIn .25s ease; }
   @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none; } }
+  .leaflet-container { font-family: 'Prompt', sans-serif; border-radius: .75rem; z-index: 0; }
+
+  /* ---------- Dark mode overrides ---------- */
+  html.dark body { background:#0f172a; color:#e2e8f0; }
+  html.dark .bg-white { background-color:#1e293b !important; }
+  html.dark .bg-gray-50 { background-color:#0f172a !important; }
+  html.dark .bg-gray-100 { background-color:#334155 !important; }
+  html.dark .hover\:bg-gray-50:hover { background-color:#334155 !important; }
+  html.dark .text-gray-800, html.dark .text-gray-700 { color:#e2e8f0 !important; }
+  html.dark .text-gray-600 { color:#cbd5e1 !important; }
+  html.dark .text-gray-500, html.dark .text-gray-400 { color:#94a3b8 !important; }
+  html.dark .border-gray-100, html.dark .border-gray-200, html.dark .border-gray-300 { border-color:#475569 !important; }
+  html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color:#334155 !important; }
+  html.dark .border-l-2 { border-color:#475569 !important; }
+  html.dark .text-brand-800, html.dark .text-brand-700 { color:#6ee7b7 !important; }
+  html.dark .bg-brand-50 { background-color:rgba(16,185,129,.15) !important; }
+  html.dark .bg-brand-100 { background-color:rgba(16,185,129,.25) !important; }
+  html.dark .border-brand-100, html.dark .border-brand-200 { border-color:rgba(16,185,129,.4) !important; }
+  html.dark .bg-orange-50, html.dark .bg-orange-100 { background-color:rgba(249,115,22,.2) !important; }
+  html.dark .bg-sky-50, html.dark .bg-sky-100 { background-color:rgba(14,165,233,.2) !important; }
+  html.dark .bg-green-50, html.dark .bg-green-100 { background-color:rgba(34,197,94,.2) !important; }
+  html.dark .bg-red-50 { background-color:rgba(239,68,68,.2) !important; }
+  html.dark .bg-amber-100 { background-color:rgba(245,158,11,.2) !important; }
+  html.dark .bg-red-100 { background-color:rgba(239,68,68,.25) !important; }
+  html.dark .text-orange-700 { color:#fdba74 !important; }
+  html.dark .text-sky-700 { color:#7dd3fc !important; }
+  html.dark .text-green-700 { color:#86efac !important; }
+  html.dark .text-amber-700 { color:#fcd34d !important; }
+  html.dark .text-red-700, html.dark .text-red-600 { color:#fca5a5 !important; }
+  html.dark input, html.dark select, html.dark textarea { background-color:#0f172a !important; color:#e2e8f0 !important; }
+  html.dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
+  html.dark .leaflet-popup-content-wrapper, html.dark .leaflet-popup-tip { background:#1e293b; color:#e2e8f0; }
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
@@ -44,7 +78,7 @@
 <main id="publicView" class="max-w-6xl mx-auto px-4 py-6">
   <section class="bg-gradient-to-r from-brand-700 to-brand-500 text-white rounded-2xl p-6 sm:p-8 mb-6 shadow">
     <h2 class="text-2xl sm:text-3xl font-semibold mb-2">พบปัญหาในชุมชน? แจ้งเราได้ทันที</h2>
-    <p class="text-brand-100 mb-4 text-sm sm:text-base">ถนนชำรุด ไฟดับ น้ำท่วมขัง สายไฟรกรุงรัง — แจ้งพร้อมรูปภาพและตำแหน่ง แล้วติดตามความคืบหน้าได้ที่นี่</p>
+    <p class="text-brand-100 mb-4 text-sm sm:text-base">ถนนชำรุด ไฟดับ น้ำท่วมขัง สายไฟรกรุงรัง — แจ้งพร้อมรูปภาพและปักหมุดบนแผนที่ แล้วติดตามความคืบหน้าได้ที่นี่</p>
     <button onclick="document.getElementById('reportCard').scrollIntoView({behavior:'smooth'})" class="bg-white text-brand-700 font-medium px-5 py-2 rounded-lg hover:bg-brand-50 transition">+ แจ้งปัญหาใหม่</button>
   </section>
 
@@ -54,6 +88,9 @@
       <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 lg:sticky lg:top-24">
         <h3 class="text-lg font-semibold text-brand-800 mb-4">📝 แจ้งปัญหา</h3>
         <form id="reportForm" class="space-y-3">
+          <div aria-hidden="true" class="absolute -left-[9999px] w-px h-px overflow-hidden">
+            <label>Website <input id="fWebsite" type="text" tabindex="-1" autocomplete="off"></label>
+          </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-sm text-gray-600">ชื่อผู้แจ้ง <span class="text-gray-400">(ไม่บังคับ)</span></label>
@@ -64,9 +101,15 @@
               <input id="fPhone" type="tel" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
           </div>
-          <div>
-            <label class="text-sm text-gray-600">หมวดหมู่ปัญหา <span class="text-red-500">*</span></label>
-            <select id="fCategory" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"></select>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm text-gray-600">หมวดหมู่ปัญหา <span class="text-red-500">*</span></label>
+              <select id="fCategory" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"></select>
+            </div>
+            <div>
+              <label class="text-sm text-gray-600">ความเร่งด่วน</label>
+              <select id="fUrgency" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"></select>
+            </div>
           </div>
           <div>
             <label class="text-sm text-gray-600">รายละเอียดปัญหา <span class="text-red-500">*</span></label>
@@ -74,10 +117,13 @@
           </div>
           <div>
             <label class="text-sm text-gray-600">สถานที่ / จุดสังเกต / พิกัด <span class="text-red-500">*</span></label>
-            <div class="flex gap-2 mt-1">
-              <input id="fLocation" required type="text" class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="เช่น ซอยลาดพร้าว 71 หน้าร้านสะดวกซื้อ">
-              <button type="button" onclick="mockGPS()" class="shrink-0 bg-brand-50 text-brand-700 border border-brand-200 px-3 rounded-lg text-sm hover:bg-brand-100">📍 GPS</button>
+            <input id="fLocation" required type="text" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="เช่น ซอยลาดพร้าว 71 หน้าร้านสะดวกซื้อ">
+            <div class="flex items-center gap-2 mt-2">
+              <button type="button" onclick="useGPS()" class="bg-brand-50 text-brand-700 border border-brand-200 px-3 py-1.5 rounded-lg text-sm hover:bg-brand-100">📍 ใช้ตำแหน่งปัจจุบัน</button>
+              <button type="button" id="clearPin" onclick="clearFormPin()" class="hidden text-xs text-gray-500 underline">ล้างหมุด</button>
             </div>
+            <div id="formMap" class="mt-2 h-52 w-full border border-gray-200 rounded-xl"></div>
+            <p id="coordText" class="text-xs text-gray-500 mt-1">แตะบนแผนที่เพื่อปักหมุดตำแหน่งปัญหา</p>
           </div>
           <div>
             <label class="text-sm text-gray-600">รูปภาพประกอบ</label>
@@ -93,12 +139,28 @@
     <section class="lg:col-span-2">
       <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4">
         <h3 class="text-lg font-semibold text-brand-800 mb-3">📋 ติดตามสถานะเรื่องร้องเรียน</h3>
-        <div class="grid sm:grid-cols-3 gap-2">
-          <input id="searchBox" type="text" placeholder="🔍 ค้นหารหัสรับแจ้ง เช่น TF-..." class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <input id="searchBox" type="text" placeholder="🔍 รหัสรับแจ้ง หรือเบอร์โทรที่แจ้ง" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
           <select id="filterCategory" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
           <select id="filterStatus" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+          <select id="sortBy" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+            <option value="latest">เรียง: ล่าสุด</option>
+            <option value="votes">เรียง: โหวตมากสุด</option>
+            <option value="urgent">เรียง: เร่งด่วนสุด</option>
+          </select>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2 mt-3">
+          <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+            <button id="modeCards" onclick="setFeedMode('cards')" class="px-3 py-1.5">🗂️ การ์ด</button>
+            <button id="modeMap" onclick="setFeedMode('map')" class="px-3 py-1.5">🗺️ แผนที่</button>
+          </div>
+          <label class="text-sm text-gray-600 flex items-center gap-2 cursor-pointer">
+            <input id="onlyMine" type="checkbox" class="accent-emerald-600"> เฉพาะเรื่องของฉัน
+          </label>
+          <span id="resultCount" class="text-xs text-gray-400"></span>
         </div>
       </div>
+      <div id="feedMapWrap" class="hidden mb-4"><div id="feedMap" class="h-[28rem] w-full border border-gray-200 rounded-2xl"></div></div>
       <div id="feed" class="grid sm:grid-cols-2 gap-4"></div>
       <p id="feedEmpty" class="hidden text-center text-gray-400 py-12">ไม่พบรายการที่ตรงกับเงื่อนไข</p>
     </section>
@@ -107,15 +169,30 @@
 
 <!-- ================= ADMIN VIEW ================= -->
 <main id="adminView" class="hidden max-w-6xl mx-auto px-4 py-6">
-  <div class="flex items-center justify-between mb-4">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
     <h2 class="text-xl font-semibold text-brand-800">🛠️ แผงควบคุมเจ้าหน้าที่</h2>
+    <button onclick="exportCSV()" class="text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg">⬇️ ส่งออก CSV</button>
   </div>
   <div id="summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"></div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h3 class="font-semibold text-gray-700 mb-3 text-sm">จำนวนเรื่องแยกตามหมวดหมู่</h3>
+      <div id="chartCategory" class="space-y-2"></div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h3 class="font-semibold text-gray-700 mb-3 text-sm">เรื่องที่แจ้งใน 7 วันล่าสุด</h3>
+      <div id="chartDays" class="flex items-end justify-between gap-2 h-36"></div>
+    </div>
+  </div>
 
   <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
     <div class="p-4 border-b border-gray-100 flex flex-wrap gap-2 items-center justify-between">
       <h3 class="font-semibold text-gray-700">ตารางจัดการเรื่องร้องเรียน</h3>
-      <select id="adminFilter" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white"></select>
+      <div class="flex gap-2">
+        <select id="adminFilter" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white"></select>
+        <select id="adminUrgency" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white"></select>
+      </div>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -158,17 +235,23 @@
   </div>
 </div>
 
-<!-- ================= DETAIL MODAL ================= -->
-<div id="detailModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
+<!-- ================= ADMIN DETAIL MODAL ================= -->
+<div id="detailModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto">
   <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-5 sm:p-6 fade-in my-8" id="detailBody"></div>
 </div>
 
-<!-- Toast -->
-<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg"></div>
+<!-- ================= PUBLIC DETAIL MODAL ================= -->
+<div id="publicModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-5 sm:p-6 fade-in my-8" id="publicBody"></div>
+</div>
 
-<footer class="text-center text-xs text-gray-400 py-8">ระบบจำลองเพื่อการสาธิต · ข้อมูลเก็บใน LocalStorage ของเบราว์เซอร์</footer>
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[1000] bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg"></div>
+
+<footer class="text-center text-xs text-gray-400 py-8">ระบบจำลองเพื่อการสาธิต · ข้อมูลเก็บใน LocalStorage ของเบราว์เซอร์ · แผนที่ © ผู้ร่วมสร้าง OpenStreetMap</footer>
 
 <script>
+// ====================== Constants ======================
 const CATEGORIES = [
   'ถนน/ทางเท้าชำรุด',
   'ไฟฟ้าส่องสว่างดับ',
@@ -183,12 +266,34 @@ const STATUS_STYLE = {
   'กำลังดำเนินการ': 'bg-sky-100 text-sky-700 border-sky-200',
   'แก้ไขเสร็จสิ้น': 'bg-green-100 text-green-700 border-green-200'
 };
+const STATUS_COLOR = { 'รอดำเนินการ':'#f97316', 'กำลังดำเนินการ':'#0ea5e9', 'แก้ไขเสร็จสิ้น':'#16a34a' };
+const STATUS_DOT = { 'รอดำเนินการ':'bg-orange-500', 'กำลังดำเนินการ':'bg-sky-500', 'แก้ไขเสร็จสิ้น':'bg-green-600' };
+const URGENCIES = ['ปกติ', 'ด่วน', 'อันตราย'];
+const URGENCY_RANK = { 'ปกติ':0, 'ด่วน':1, 'อันตราย':2 };
+const URGENCY_STYLE = {
+  'ปกติ': 'bg-gray-100 text-gray-600 border-gray-200',
+  'ด่วน': 'bg-amber-100 text-amber-700 border-amber-200',
+  'อันตราย': 'bg-red-100 text-red-700 border-red-200'
+};
+const BKK = [13.7563, 100.5018];
+const TILE = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
 const DB_KEY = 'infra_issues_v1';
 const AUTH_KEY = 'infra_admin_session';
+const VOTE_KEY = 'infra_voted_v1';
+const MINE_KEY = 'infra_mine_v1';
+const LAST_KEY = 'infra_last_submit';
+const THEME_KEY = 'infra_theme';
 
-// ---------- Utilities ----------
+// ====================== Utilities ======================
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hasLeaflet = () => typeof L !== 'undefined';
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function loadSet(k) { try { return new Set(JSON.parse(lsGet(k) || '[]')); } catch (e) { return new Set(); } }
+function saveSet(k, s) { lsSet(k, JSON.stringify([...s])); }
+
 function placeholderImg(emoji, c1, c2) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="600" height="400" fill="url(#g)"/><text x="300" y="240" font-size="140" text-anchor="middle">${emoji}</text></svg>`;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
@@ -198,87 +303,22 @@ function fmtDate(iso) {
 }
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.remove('hidden');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 2600);
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 2800);
 }
-function genTicketId(issues) {
+function genTicketId(list) {
   const d = new Date();
   const base = `TF-${String(d.getFullYear()).slice(2)}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   let id;
-  do { id = `${base}-${Math.floor(1000 + Math.random()*9000)}`; } while (issues.some(i => i.id === id));
+  do { id = `${base}-${Math.floor(1000 + Math.random()*9000)}`; } while (list.some(i => i.id === id));
   return id;
 }
-
-// ---------- Data layer (LocalStorage) ----------
-function seedData() {
-  const now = Date.now();
-  const h = n => new Date(now - n * 3600 * 1000).toISOString();
-  return [
-    { id:'TF-261108-1024', name:'สมชาย ใจดี', phone:'081-234-5678', category:CATEGORIES[0],
-      description:'ผิวถนนเป็นหลุมลึกขนาดใหญ่ รถจักรยานยนต์เสี่ยงล้ม โดยเฉพาะตอนกลางคืน',
-      location:'ถนนลาดพร้าว ซอย 71 ใกล้ทางเข้าตลาด (13.7956, 100.6101)',
-      image: placeholderImg('🕳️','#d1d5db','#9ca3af'), status:'รอดำเนินการ', note:'', createdAt:h(52), updatedAt:h(52) },
-    { id:'TF-261109-2381', name:'', phone:'', category:CATEGORIES[1],
-      description:'ไฟถนนดับต่อเนื่องกัน 5 ต้น ทำให้ซอยมืดมาก เสี่ยงต่อความปลอดภัย',
-      location:'ซอยสุขุมวิท 101/1 ช่วงหน้าโรงเรียน',
-      image: placeholderImg('💡','#fde68a','#92400e'), status:'กำลังดำเนินการ', note:'ช่างไฟฟ้าลงพื้นที่ตรวจสอบแล้ว รอเปลี่ยนหลอดและตรวจสอบสายไฟ คาดว่าเสร็จภายใน 2 วัน', createdAt:h(30), updatedAt:h(8) },
-    { id:'TF-261105-7712', name:'วิภา รักษ์ถิ่น', phone:'089-876-5432', category:CATEGORIES[2],
-      description:'ท่อระบายน้ำอุดตัน น้ำท่วมขังหลังฝนตกทุกครั้ง ส่งกลิ่นเหม็น',
-      location:'ถนนเพชรเกษม หน้าซอย 48',
-      image: placeholderImg('🌊','#bae6fd','#0369a1'), status:'แก้ไขเสร็จสิ้น', note:'เจ้าหน้าที่ดูดสิ่งอุดตันและล้างท่อระบายน้ำเรียบร้อยแล้ว', createdAt:h(110), updatedAt:h(60) },
-    { id:'TF-261110-5590', name:'ประเสริฐ มั่นคง', phone:'', category:CATEGORIES[4],
-      description:'สายสื่อสารห้อยต่ำเกือบถึงพื้น เสี่ยงอันตรายต่อรถบรรทุกและคนเดินเท้า',
-      location:'ถนนจรัญสนิทวงศ์ หน้าปั๊มน้ำมัน',
-      image: placeholderImg('🔌','#d9f99d','#3f6212'), status:'รอดำเนินการ', note:'', createdAt:h(5), updatedAt:h(5) }
-  ];
+function badge(status) {
+  return `<span class="inline-block text-xs px-2.5 py-1 rounded-full border font-medium ${STATUS_STYLE[status]}">${esc(status)}</span>`;
 }
-function loadIssues() {
-  try {
-    const raw = localStorage.getItem(DB_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
-  const seeded = seedData();
-  saveIssues(seeded);
-  return seeded;
-}
-function saveIssues(list) {
-  try { localStorage.setItem(DB_KEY, JSON.stringify(list)); return true; }
-  catch (e) { toast('บันทึกไม่สำเร็จ: พื้นที่จัดเก็บเต็ม'); return false; }
-}
-let issues = loadIssues();
-let isAdmin = sessionStorage.getItem(AUTH_KEY) === '1';
-
-// ---------- Init selects ----------
-function opt(v, t) { return `<option value="${esc(v)}">${esc(t ?? v)}</option>`; }
-$('fCategory').innerHTML = opt('', '-- เลือกหมวดหมู่ --') + CATEGORIES.map(c => opt(c)).join('');
-$('filterCategory').innerHTML = opt('', 'ทุกหมวดหมู่') + CATEGORIES.map(c => opt(c)).join('');
-$('filterStatus').innerHTML = opt('', 'ทุกสถานะ') + STATUSES.map(s => opt(s)).join('');
-$('adminFilter').innerHTML = opt('', 'ทุกสถานะ') + STATUSES.map(s => opt(s)).join('');
-
-// ---------- View switching / header ----------
-function renderHeader() {
-  $('headerActions').innerHTML = isAdmin
-    ? `<span class="hidden sm:inline text-sm text-gray-500">เจ้าหน้าที่</span>
-       <button onclick="showView('public')" class="text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">หน้าประชาชน</button>
-       <button onclick="logout()" class="text-sm bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100">ออกจากระบบ</button>`
-    : `<button onclick="openLogin()" class="text-sm bg-brand-700 text-white px-3 py-1.5 rounded-lg hover:bg-brand-800">🔐 สำหรับเจ้าหน้าที่ (Admin Login)</button>`;
-}
-function showView(v) {
-  if (v === 'admin' && !isAdmin) return openLogin();
-  $('publicView').classList.toggle('hidden', v !== 'public');
-  $('adminView').classList.toggle('hidden', v !== 'admin');
-  renderHeader();
-  window.scrollTo({ top: 0 });
-  if (v === 'admin') renderAdmin(); else renderFeed();
-}
-
-// ---------- Report form ----------
-function mockGPS() {
-  const lat = (13.65 + Math.random() * 0.2).toFixed(6);
-  const lng = (100.45 + Math.random() * 0.2).toFixed(6);
-  const cur = $('fLocation').value.trim();
-  const coords = `พิกัด ${lat}, ${lng}`;
-  $('fLocation').value = cur ? `${cur} (${lat}, ${lng})` : coords;
-  toast('ดึงพิกัดจำลองสำเร็จ 📍');
+function urgencyBadge(u) {
+  if (!u || u === 'ปกติ') return '';
+  const icon = u === 'อันตราย' ? '⚠️' : '⏰';
+  return `<span class="inline-block text-xs px-2 py-0.5 rounded-full border font-medium ${URGENCY_STYLE[u]}">${icon} ${esc(u)}</span>`;
 }
 // Resize image to keep LocalStorage small, output Base64
 function fileToBase64(file, maxW = 800) {
@@ -301,7 +341,208 @@ function fileToBase64(file, maxW = 800) {
     reader.readAsDataURL(file);
   });
 }
-let pendingImage = '';
+
+// ====================== Data layer (LocalStorage) ======================
+function normalize(i) {
+  i.urgency = i.urgency || 'ปกติ';
+  i.votes = Number(i.votes) || 0;
+  i.afterImage = i.afterImage || '';
+  if (i.lat === undefined) i.lat = null;
+  if (i.lng === undefined) i.lng = null;
+  if (!Array.isArray(i.history) || !i.history.length) {
+    i.history = [{ status:'รอดำเนินการ', note:'รับเรื่องแล้ว', at:i.createdAt }];
+    if (i.status !== 'รอดำเนินการ') i.history.push({ status:i.status, note:i.note || '', at:i.updatedAt || i.createdAt });
+  }
+  return i;
+}
+function seedData() {
+  const now = Date.now();
+  const h = n => new Date(now - n * 3600 * 1000).toISOString();
+  return [
+    { id:'TF-261108-1024', name:'สมชาย ใจดี', phone:'081-234-5678', category:CATEGORIES[0],
+      description:'ผิวถนนเป็นหลุมลึกขนาดใหญ่ รถจักรยานยนต์เสี่ยงล้ม โดยเฉพาะตอนกลางคืน',
+      location:'ถนนลาดพร้าว ซอย 71 ใกล้ทางเข้าตลาด', lat:13.7956, lng:100.6101,
+      image: placeholderImg('🕳️','#d1d5db','#9ca3af'), afterImage:'', status:'รอดำเนินการ', urgency:'ด่วน', votes:7, note:'',
+      history:[{status:'รอดำเนินการ', note:'รับเรื่องแล้ว', at:h(52)}], createdAt:h(52), updatedAt:h(52) },
+    { id:'TF-261109-2381', name:'', phone:'', category:CATEGORIES[1],
+      description:'ไฟถนนดับต่อเนื่องกัน 5 ต้น ทำให้ซอยมืดมาก เสี่ยงต่อความปลอดภัย',
+      location:'ซอยสุขุมวิท 101/1 ช่วงหน้าโรงเรียน', lat:13.6903, lng:100.6063,
+      image: placeholderImg('💡','#fde68a','#92400e'), afterImage:'', status:'กำลังดำเนินการ', urgency:'ปกติ', votes:12,
+      note:'ช่างไฟฟ้าลงพื้นที่ตรวจสอบแล้ว รอเปลี่ยนหลอดและตรวจสอบสายไฟ คาดว่าเสร็จภายใน 2 วัน',
+      history:[{status:'รอดำเนินการ', note:'รับเรื่องแล้ว', at:h(30)}, {status:'กำลังดำเนินการ', note:'ช่างไฟฟ้าลงพื้นที่ตรวจสอบแล้ว รอเปลี่ยนหลอดและตรวจสอบสายไฟ คาดว่าเสร็จภายใน 2 วัน', at:h(8)}],
+      createdAt:h(30), updatedAt:h(8) },
+    { id:'TF-261105-7712', name:'วิภา รักษ์ถิ่น', phone:'089-876-5432', category:CATEGORIES[2],
+      description:'ท่อระบายน้ำอุดตัน น้ำท่วมขังหลังฝนตกทุกครั้ง ส่งกลิ่นเหม็น',
+      location:'ถนนเพชรเกษม หน้าซอย 48', lat:13.7160, lng:100.4580,
+      image: placeholderImg('🌊','#bae6fd','#0369a1'), afterImage: placeholderImg('✅','#bbf7d0','#166534'),
+      status:'แก้ไขเสร็จสิ้น', urgency:'ปกติ', votes:4, note:'เจ้าหน้าที่ดูดสิ่งอุดตันและล้างท่อระบายน้ำเรียบร้อยแล้ว',
+      history:[{status:'รอดำเนินการ', note:'รับเรื่องแล้ว', at:h(110)}, {status:'กำลังดำเนินการ', note:'ส่งรถดูดสิ่งอุดตันเข้าพื้นที่', at:h(84)}, {status:'แก้ไขเสร็จสิ้น', note:'เจ้าหน้าที่ดูดสิ่งอุดตันและล้างท่อระบายน้ำเรียบร้อยแล้ว', at:h(60)}],
+      createdAt:h(110), updatedAt:h(60) },
+    { id:'TF-261110-5590', name:'ประเสริฐ มั่นคง', phone:'', category:CATEGORIES[4],
+      description:'สายสื่อสารห้อยต่ำเกือบถึงพื้น เสี่ยงอันตรายต่อรถบรรทุกและคนเดินเท้า',
+      location:'ถนนจรัญสนิทวงศ์ หน้าปั๊มน้ำมัน', lat:13.7640, lng:100.4760,
+      image: placeholderImg('🔌','#d9f99d','#3f6212'), afterImage:'', status:'รอดำเนินการ', urgency:'อันตราย', votes:3, note:'',
+      history:[{status:'รอดำเนินการ', note:'รับเรื่องแล้ว', at:h(5)}], createdAt:h(5), updatedAt:h(5) }
+  ];
+}
+function loadIssues() {
+  try {
+    const raw = lsGet(DB_KEY);
+    if (raw) return JSON.parse(raw).map(normalize);
+  } catch (e) {}
+  const seeded = seedData().map(normalize);
+  saveIssues(seeded);
+  return seeded;
+}
+function saveIssues(list) {
+  if (!lsSet(DB_KEY, JSON.stringify(list))) { toast('บันทึกไม่สำเร็จ: พื้นที่จัดเก็บเต็ม'); return false; }
+  return true;
+}
+let issues = loadIssues();
+let isAdmin = sessionStorage.getItem(AUTH_KEY) === '1';
+
+// ====================== Theme ======================
+function applyTheme(t) {
+  document.documentElement.classList.toggle('dark', t === 'dark');
+}
+function toggleTheme() {
+  const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+  lsSet(THEME_KEY, next);
+  applyTheme(next);
+  renderHeader();
+}
+applyTheme(lsGet(THEME_KEY) || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+// ====================== Init selects ======================
+function opt(v, t) { return `<option value="${esc(v)}">${esc(t ?? v)}</option>`; }
+$('fCategory').innerHTML = opt('', '-- เลือก --') + CATEGORIES.map(c => opt(c)).join('');
+$('fUrgency').innerHTML = URGENCIES.map(u => opt(u)).join('');
+$('filterCategory').innerHTML = opt('', 'ทุกหมวดหมู่') + CATEGORIES.map(c => opt(c)).join('');
+$('filterStatus').innerHTML = opt('', 'ทุกสถานะ') + STATUSES.map(s => opt(s)).join('');
+$('adminFilter').innerHTML = opt('', 'ทุกสถานะ') + STATUSES.map(s => opt(s)).join('');
+$('adminUrgency').innerHTML = opt('', 'ทุกระดับความเร่งด่วน') + URGENCIES.map(s => opt(s)).join('');
+
+// ====================== View switching / header ======================
+function renderHeader() {
+  const dark = document.documentElement.classList.contains('dark');
+  const themeBtn = `<button onclick="toggleTheme()" title="สลับโหมดมืด/สว่าง" class="text-base border border-gray-300 w-9 h-9 rounded-lg hover:bg-gray-50">${dark ? '☀️' : '🌙'}</button>`;
+  $('headerActions').innerHTML = themeBtn + (isAdmin
+    ? `<span class="hidden sm:inline text-sm text-gray-500">เจ้าหน้าที่</span>
+       <button onclick="showView('public')" class="text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">หน้าประชาชน</button>
+       <button onclick="showView('admin')" class="text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">หลังบ้าน</button>
+       <button onclick="logout()" class="text-sm bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100">ออกจากระบบ</button>`
+    : `<button onclick="openLogin()" class="text-sm bg-brand-700 text-white px-3 py-1.5 rounded-lg hover:bg-brand-800"><span class="sm:hidden">🔐 Admin</span><span class="hidden sm:inline">🔐 สำหรับเจ้าหน้าที่ (Admin Login)</span></button>`);
+}
+function showView(v) {
+  if (v === 'admin' && !isAdmin) return openLogin();
+  closePublic(); closeDetail();
+  $('publicView').classList.toggle('hidden', v !== 'public');
+  $('adminView').classList.toggle('hidden', v !== 'admin');
+  renderHeader();
+  window.scrollTo({ top: 0 });
+  if (v === 'admin') renderAdmin();
+  else { initFormMap(); renderFeed(); }
+}
+
+// ====================== Maps ======================
+let formMap = null, formMarker = null, formPin = null;
+let feedMap = null, feedLayer = null, miniMap = null;
+
+function pinIcon(color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:${color};width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45)"></div>`,
+    iconSize: [26, 26], iconAnchor: [13, 26], popupAnchor: [0, -24]
+  });
+}
+function addTiles(map) {
+  L.tileLayer(TILE, { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+}
+function mapUnavailable(id) {
+  $(id).innerHTML = '<p class="text-xs text-gray-400 p-4">ไม่สามารถโหลดแผนที่ได้ (ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)</p>';
+}
+function initFormMap() {
+  if (!hasLeaflet()) return mapUnavailable('formMap');
+  if (formMap) { setTimeout(() => formMap.invalidateSize(), 60); return; }
+  formMap = L.map('formMap').setView(BKK, 11);
+  addTiles(formMap);
+  formMap.on('click', e => setFormPin(e.latlng.lat, e.latlng.lng));
+}
+function setFormPin(lat, lng, zoom) {
+  formPin = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
+  if (formMap) {
+    if (formMarker) formMarker.setLatLng([lat, lng]);
+    else formMarker = L.marker([lat, lng], { icon: pinIcon('#dc2626') }).addTo(formMap);
+    if (zoom) formMap.setView([lat, lng], zoom);
+  }
+  $('coordText').textContent = `📌 พิกัด ${formPin.lat}, ${formPin.lng}`;
+  $('clearPin').classList.remove('hidden');
+  const loc = $('fLocation');
+  if (!loc.value.trim()) loc.value = `พิกัด ${formPin.lat}, ${formPin.lng}`;
+}
+function clearFormPin() {
+  formPin = null;
+  if (formMarker) { formMarker.remove(); formMarker = null; }
+  $('coordText').textContent = 'แตะบนแผนที่เพื่อปักหมุดตำแหน่งปัญหา';
+  $('clearPin').classList.add('hidden');
+}
+function useGPS() {
+  const fallback = () => {
+    const lat = 13.65 + Math.random() * 0.2, lng = 100.45 + Math.random() * 0.2;
+    setFormPin(lat, lng, 14);
+    toast('ดึงตำแหน่งจริงไม่ได้ ใช้พิกัดจำลองแทน');
+  };
+  if (!navigator.geolocation) return fallback();
+  toast('กำลังค้นหาตำแหน่ง...');
+  navigator.geolocation.getCurrentPosition(
+    p => { setFormPin(p.coords.latitude, p.coords.longitude, 17); toast('ดึงตำแหน่งปัจจุบันสำเร็จ 📍'); },
+    fallback,
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+}
+function renderFeedMap(list) {
+  if (!hasLeaflet()) return mapUnavailable('feedMap');
+  if (!feedMap) {
+    feedMap = L.map('feedMap').setView(BKK, 11);
+    addTiles(feedMap);
+    feedLayer = L.layerGroup().addTo(feedMap);
+  }
+  feedLayer.clearLayers();
+  const pts = [];
+  list.filter(i => i.lat != null && i.lng != null).forEach(i => {
+    const m = L.marker([i.lat, i.lng], { icon: pinIcon(STATUS_COLOR[i.status]) }).addTo(feedLayer);
+    m.bindPopup(`<b>${esc(i.category)}</b><br><span style="font-size:12px">${esc(i.id)} · ${esc(i.status)}</span><br><a href="#" onclick="openPublicDetail('${i.id}');return false;" style="color:#059669">ดูรายละเอียด</a>`);
+    pts.push([i.lat, i.lng]);
+  });
+  setTimeout(() => {
+    feedMap.invalidateSize();
+    if (pts.length) feedMap.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
+  }, 60);
+}
+function destroyMini() {
+  if (miniMap) { try { miniMap.remove(); } catch (e) {} miniMap = null; }
+}
+function showMiniMap(containerId, i) {
+  destroyMini();
+  if (!hasLeaflet() || i.lat == null || i.lng == null || !$(containerId)) return;
+  miniMap = L.map(containerId, { scrollWheelZoom: false }).setView([i.lat, i.lng], 16);
+  addTiles(miniMap);
+  L.marker([i.lat, i.lng], { icon: pinIcon(STATUS_COLOR[i.status]) }).addTo(miniMap);
+  setTimeout(() => miniMap && miniMap.invalidateSize(), 80);
+}
+
+// ====================== Timeline ======================
+function timelineHTML(i) {
+  const items = [...i.history].reverse().map(h => `
+    <li class="relative ml-4 pb-1">
+      <span class="absolute -left-[23px] top-1.5 w-3 h-3 rounded-full ${STATUS_DOT[h.status] || 'bg-gray-400'}"></span>
+      <div class="flex flex-wrap items-center gap-2">${badge(h.status)}<span class="text-xs text-gray-400">${fmtDate(h.at)}</span></div>
+      ${h.note ? `<p class="text-sm text-gray-600 mt-1">${esc(h.note)}</p>` : ''}
+    </li>`).join('');
+  return `<ol class="border-l-2 border-gray-200 ml-2 space-y-3">${items}</ol>`;
+}
+
+// ====================== Report form ======================
 $('fImage').addEventListener('change', async e => {
   const f = e.target.files[0];
   const prev = $('imgPreview');
@@ -311,43 +552,95 @@ $('fImage').addEventListener('change', async e => {
     prev.src = pendingImage; prev.classList.remove('hidden');
   } catch (err) { toast('ไม่สามารถอ่านไฟล์รูปภาพได้'); pendingImage = ''; }
 });
+let pendingImage = '';
+
+function findDuplicate(cat, loc, pin) {
+  const nl = loc.trim().toLowerCase();
+  return issues.find(i =>
+    i.category === cat && i.status !== 'แก้ไขเสร็จสิ้น' &&
+    Date.now() - new Date(i.createdAt) < 7 * 864e5 &&
+    ((i.location || '').trim().toLowerCase() === nl ||
+      (pin && i.lat != null && Math.abs(i.lat - pin.lat) < 0.0003 && Math.abs(i.lng - pin.lng) < 0.0003)));
+}
 $('reportForm').addEventListener('submit', e => {
   e.preventDefault();
+  if ($('fWebsite').value) return; // honeypot: bots fill hidden fields
+  const last = Number(lsGet(LAST_KEY)) || 0;
+  if (Date.now() - last < 30000) {
+    return toast(`กรุณารอ ${Math.ceil((30000 - (Date.now() - last)) / 1000)} วินาที ก่อนแจ้งเรื่องถัดไป`);
+  }
+  const category = $('fCategory').value;
+  const location = $('fLocation').value.trim();
+  const dup = findDuplicate(category, location, formPin);
+  if (dup && !confirm(`พบเรื่องที่คล้ายกัน (${dup.id}) ซึ่งยังไม่เสร็จสิ้น\n\nกด "ยกเลิก" แล้วกด "ฉันก็เจอปัญหานี้" ที่เรื่องเดิมได้\nหรือกด "ตกลง" เพื่อแจ้งเป็นเรื่องใหม่`)) return;
+
+  const nowIso = new Date().toISOString();
   const issue = {
     id: genTicketId(issues),
     name: $('fName').value.trim(),
     phone: $('fPhone').value.trim(),
-    category: $('fCategory').value,
+    category,
     description: $('fDesc').value.trim(),
-    location: $('fLocation').value.trim(),
+    location,
+    lat: formPin ? formPin.lat : null,
+    lng: formPin ? formPin.lng : null,
     image: pendingImage,
+    afterImage: '',
     status: 'รอดำเนินการ',
+    urgency: $('fUrgency').value,
+    votes: 0,
     note: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    history: [{ status: 'รอดำเนินการ', note: 'รับเรื่องแล้ว', at: nowIso }],
+    createdAt: nowIso,
+    updatedAt: nowIso
   };
   issues.unshift(issue);
   if (!saveIssues(issues)) { issues.shift(); return; }
-  e.target.reset(); pendingImage = ''; $('imgPreview').classList.add('hidden');
+  const mine = loadSet(MINE_KEY); mine.add(issue.id); saveSet(MINE_KEY, mine);
+  lsSet(LAST_KEY, String(Date.now()));
+  e.target.reset(); pendingImage = ''; $('imgPreview').classList.add('hidden'); clearFormPin();
   renderFeed();
   toast(`ส่งเรื่องสำเร็จ! รหัสรับแจ้ง ${issue.id}`);
-  document.getElementById('feed').scrollIntoView({ behavior: 'smooth' });
+  $('feed').scrollIntoView({ behavior: 'smooth' });
 });
 
-// ---------- Public feed ----------
-function badge(status) {
-  return `<span class="inline-block text-xs px-2.5 py-1 rounded-full border font-medium ${STATUS_STYLE[status]}">${esc(status)}</span>`;
+// ====================== Public feed ======================
+let feedMode = 'cards';
+function setFeedMode(m) {
+  feedMode = m;
+  renderFeed();
+}
+function getPublicList() {
+  const q = $('searchBox').value.trim().toLowerCase();
+  const digits = q.replace(/\D/g, '');
+  const cat = $('filterCategory').value, st = $('filterStatus').value, sort = $('sortBy').value;
+  const mineOnly = $('onlyMine').checked;
+  const mine = loadSet(MINE_KEY);
+  const list = issues.filter(i => {
+    const matchQ = !q || i.id.toLowerCase().includes(q) || (digits.length >= 9 && (i.phone || '').replace(/\D/g, '') === digits);
+    return matchQ && (!cat || i.category === cat) && (!st || i.status === st) && (!mineOnly || mine.has(i.id));
+  });
+  const byDate = (a, b) => new Date(b.createdAt) - new Date(a.createdAt);
+  if (sort === 'votes') list.sort((a, b) => b.votes - a.votes || byDate(a, b));
+  else if (sort === 'urgent') list.sort((a, b) => URGENCY_RANK[b.urgency] - URGENCY_RANK[a.urgency] || b.votes - a.votes || byDate(a, b));
+  else list.sort(byDate);
+  return list;
 }
 function renderFeed() {
-  const q = $('searchBox').value.trim().toLowerCase();
-  const cat = $('filterCategory').value;
-  const st = $('filterStatus').value;
-  const list = issues
-    .filter(i => (!q || i.id.toLowerCase().includes(q)) && (!cat || i.category === cat) && (!st || i.status === st))
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const list = getPublicList();
+  const voted = loadSet(VOTE_KEY);
+  const mapMode = feedMode === 'map';
+  const active = 'bg-brand-600 text-white', idle = 'bg-white text-gray-600 hover:bg-gray-50';
+  $('modeCards').className = `px-3 py-1.5 ${mapMode ? idle : active}`;
+  $('modeMap').className = `px-3 py-1.5 ${mapMode ? active : idle}`;
+  $('feedMapWrap').classList.toggle('hidden', !mapMode);
+  $('feed').classList.toggle('hidden', mapMode);
+  $('resultCount').textContent = `พบ ${list.length} รายการ`;
   $('feedEmpty').classList.toggle('hidden', list.length > 0);
+  if (mapMode) renderFeedMap(list);
+
   $('feed').innerHTML = list.map(i => `
-    <article class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col fade-in">
+    <article onclick="openPublicDetail('${i.id}')" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col fade-in cursor-pointer hover:shadow-md transition">
       ${i.image
         ? `<img src="${i.image}" alt="" class="h-44 w-full object-cover">`
         : `<div class="h-44 w-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">ไม่มีรูปภาพ</div>`}
@@ -356,21 +649,83 @@ function renderFeed() {
           <span class="text-xs font-mono text-gray-500">${esc(i.id)}</span>
           ${badge(i.status)}
         </div>
-        <h4 class="font-semibold text-brand-800">${esc(i.category)}</h4>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h4 class="font-semibold text-brand-800">${esc(i.category)}</h4>
+          ${urgencyBadge(i.urgency)}
+        </div>
         <p class="text-sm text-gray-600 line-clamp-2">${esc(i.description)}</p>
         <p class="text-xs text-gray-500">📍 ${esc(i.location)}</p>
         <p class="text-xs text-gray-400">🕒 ${fmtDate(i.createdAt)}</p>
         ${i.note ? `<div class="mt-1 bg-brand-50 border border-brand-100 rounded-lg p-2.5 text-xs text-brand-800"><span class="font-medium">ผลการดำเนินการ:</span> ${esc(i.note)}</div>` : ''}
+        <div class="mt-auto pt-2 flex items-center justify-between gap-2">
+          <button onclick="event.stopPropagation();toggleVote('${i.id}')" class="text-xs px-3 py-1.5 rounded-full border ${voted.has(i.id) ? 'bg-brand-600 text-white border-brand-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}">👍 ฉันก็เจอปัญหานี้ (${i.votes})</button>
+          ${i.afterImage ? '<span class="text-xs text-green-700">✅ มีรูปหลังแก้ไข</span>' : ''}
+        </div>
       </div>
     </article>`).join('');
 }
-['input','change'].forEach(ev => {
-  $('searchBox').addEventListener(ev, renderFeed);
-  $('filterCategory').addEventListener(ev, renderFeed);
-  $('filterStatus').addEventListener(ev, renderFeed);
+['input', 'change'].forEach(ev => {
+  ['searchBox', 'filterCategory', 'filterStatus', 'sortBy', 'onlyMine'].forEach(id => $(id).addEventListener(ev, renderFeed));
 });
 
-// ---------- Admin auth ----------
+function toggleVote(id) {
+  const i = issues.find(x => x.id === id);
+  if (!i) return;
+  const v = loadSet(VOTE_KEY);
+  if (v.has(id)) { v.delete(id); i.votes = Math.max(0, i.votes - 1); }
+  else { v.add(id); i.votes++; toast('ขอบคุณที่ร่วมยืนยันปัญหานี้ 👍'); }
+  saveSet(VOTE_KEY, v);
+  saveIssues(issues);
+  renderFeed();
+  if (openPublicId === id) openPublicDetail(id);
+}
+
+// ====================== Public detail modal ======================
+let openPublicId = null;
+function openPublicDetail(id) {
+  const i = issues.find(x => x.id === id);
+  if (!i) return;
+  openPublicId = id;
+  destroyMini();
+  const voted = loadSet(VOTE_KEY).has(id);
+  $('publicBody').innerHTML = `
+    <div class="flex justify-between items-start mb-3">
+      <div>
+        <p class="text-xs font-mono text-gray-500">${esc(i.id)}</p>
+        <h3 class="text-lg font-semibold text-brand-800">${esc(i.category)}</h3>
+        <div class="flex flex-wrap gap-2 mt-1">${badge(i.status)} ${urgencyBadge(i.urgency)}</div>
+      </div>
+      <button onclick="closePublic()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+    </div>
+    <div class="grid ${i.afterImage ? 'sm:grid-cols-2' : ''} gap-3 mb-3">
+      ${i.image ? `<figure><img src="${i.image}" class="w-full h-52 object-cover rounded-xl border"><figcaption class="text-xs text-gray-500 mt-1 text-center">${i.afterImage ? 'ก่อนแก้ไข' : 'รูปที่แจ้ง'}</figcaption></figure>` : ''}
+      ${i.afterImage ? `<figure><img src="${i.afterImage}" class="w-full h-52 object-cover rounded-xl border border-green-300"><figcaption class="text-xs text-green-700 mt-1 text-center">✅ หลังแก้ไข</figcaption></figure>` : ''}
+    </div>
+    <div class="space-y-1.5 text-sm mb-4">
+      <p>${esc(i.description)}</p>
+      <p class="text-gray-500">📍 ${esc(i.location)}</p>
+      <p class="text-gray-500">🕒 แจ้งเมื่อ ${fmtDate(i.createdAt)}</p>
+    </div>
+    ${i.note ? `<div class="mb-4 bg-brand-50 border border-brand-100 rounded-lg p-3 text-sm text-brand-800"><span class="font-medium">ผลการดำเนินการ:</span> ${esc(i.note)}</div>` : ''}
+    ${i.lat != null ? `<div id="miniMapP" class="h-48 w-full border border-gray-200 rounded-xl mb-4"></div>` : ''}
+    <h4 class="font-semibold text-gray-700 mb-2 text-sm">ความคืบหน้า</h4>
+    <div class="mb-4">${timelineHTML(i)}</div>
+    <div class="flex justify-between items-center gap-2">
+      <button onclick="toggleVote('${i.id}')" class="text-sm px-4 py-2 rounded-full border ${voted ? 'bg-brand-600 text-white border-brand-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}">👍 ฉันก็เจอปัญหานี้ (${i.votes})</button>
+      <button onclick="closePublic()" class="border border-gray-300 text-sm px-4 py-2 rounded-lg hover:bg-gray-50">ปิด</button>
+    </div>`;
+  $('publicModal').classList.remove('hidden');
+  showMiniMap('miniMapP', i);
+}
+function closePublic() {
+  destroyMini();
+  openPublicId = null;
+  $('publicModal').classList.add('hidden');
+}
+$('publicModal').addEventListener('click', e => { if (e.target === $('publicModal')) closePublic(); });
+
+// ====================== Admin auth ======================
+let failCount = 0, lockUntil = 0;
 function openLogin() {
   $('loginError').classList.add('hidden');
   $('loginForm').reset();
@@ -380,14 +735,24 @@ function openLogin() {
 function closeLogin() { $('loginModal').classList.add('hidden'); }
 $('loginForm').addEventListener('submit', e => {
   e.preventDefault();
+  const err = $('loginError');
+  if (Date.now() < lockUntil) {
+    err.textContent = `ลองผิดหลายครั้งเกินไป กรุณารอ ${Math.ceil((lockUntil - Date.now()) / 1000)} วินาที`;
+    err.classList.remove('hidden');
+    return;
+  }
   if ($('lUser').value === '0000' && $('lPass').value === '0000') {
+    failCount = 0;
     isAdmin = true;
     sessionStorage.setItem(AUTH_KEY, '1');
     closeLogin();
     showView('admin');
     toast('เข้าสู่ระบบสำเร็จ');
   } else {
-    $('loginError').classList.remove('hidden');
+    failCount++;
+    if (failCount >= 5) { lockUntil = Date.now() + 30000; failCount = 0; }
+    err.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+    err.classList.remove('hidden');
     alert('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
   }
 });
@@ -400,7 +765,38 @@ function logout() {
 }
 $('loginModal').addEventListener('click', e => { if (e.target === $('loginModal')) closeLogin(); });
 
-// ---------- Admin dashboard ----------
+// ====================== Admin dashboard ======================
+function getAdminList() {
+  const f = $('adminFilter').value, u = $('adminUrgency').value;
+  return issues
+    .filter(i => (!f || i.status === f) && (!u || i.urgency === u))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+function renderCharts() {
+  // by category
+  const counts = CATEGORIES.map(c => [c, issues.filter(i => i.category === c).length]);
+  const max = Math.max(1, ...counts.map(c => c[1]));
+  $('chartCategory').innerHTML = counts.map(([c, n]) => `
+    <div>
+      <div class="flex justify-between text-xs text-gray-600 mb-0.5"><span>${esc(c)}</span><span>${n}</span></div>
+      <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-brand-500 rounded-full" style="width:${(n / max) * 100}%"></div></div>
+    </div>`).join('');
+  // last 7 days
+  const days = [];
+  for (let k = 6; k >= 0; k--) {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - k);
+    const next = new Date(d); next.setDate(next.getDate() + 1);
+    const n = issues.filter(i => { const t = new Date(i.createdAt); return t >= d && t < next; }).length;
+    days.push({ label: d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }), n });
+  }
+  const dmax = Math.max(1, ...days.map(d => d.n));
+  $('chartDays').innerHTML = days.map(d => `
+    <div class="flex-1 flex flex-col items-center justify-end h-full">
+      <span class="text-xs text-gray-600 mb-1">${d.n}</span>
+      <div class="w-full max-w-[34px] bg-brand-500 rounded-t-md" style="height:${Math.max(4, (d.n / dmax) * 80)}%"></div>
+      <span class="text-[10px] text-gray-400 mt-1 whitespace-nowrap">${esc(d.label)}</span>
+    </div>`).join('');
+}
 function renderAdmin() {
   const count = s => issues.filter(i => i.status === s).length;
   const cards = [
@@ -414,17 +810,18 @@ function renderAdmin() {
       <p class="text-sm opacity-80">${t}</p>
       <p class="text-3xl font-semibold mt-1">${n}</p>
     </div>`).join('');
+  renderCharts();
 
-  const f = $('adminFilter').value;
-  const list = issues.filter(i => !f || i.status === f).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const list = getAdminList();
   $('adminEmpty').classList.toggle('hidden', list.length > 0);
   $('adminTable').innerHTML = list.map(i => `
     <tr class="hover:bg-gray-50 align-top">
       <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">${esc(i.id)}</td>
       <td class="px-4 py-3">${i.image ? `<img src="${i.image}" class="w-14 h-14 rounded-lg object-cover border">` : '<div class="w-14 h-14 rounded-lg bg-gray-100"></div>'}</td>
       <td class="px-4 py-3 max-w-xs">
-        <p class="font-medium text-gray-800">${esc(i.category)}</p>
+        <p class="font-medium text-gray-800">${esc(i.category)} ${urgencyBadge(i.urgency)}</p>
         <p class="text-xs text-gray-500 line-clamp-2">${esc(i.description)}</p>
+        <p class="text-xs text-gray-400 mt-0.5">👍 ${i.votes}${i.lat != null ? ' · 📌 มีพิกัด' : ''}${i.afterImage ? ' · ✅ มีรูปหลังแก้ไข' : ''}</p>
       </td>
       <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(i.createdAt)}</td>
       <td class="px-4 py-3">${badge(i.status)}</td>
@@ -435,10 +832,36 @@ function renderAdmin() {
     </tr>`).join('');
 }
 $('adminFilter').addEventListener('change', renderAdmin);
+$('adminUrgency').addEventListener('change', renderAdmin);
 
+// ---- CSV export (respects current admin filters) ----
+function exportCSV() {
+  if (!isAdmin) return;
+  const list = getAdminList();
+  const head = ['รหัสรับแจ้ง', 'วันที่แจ้ง', 'ชื่อผู้แจ้ง', 'เบอร์ติดต่อ', 'หมวดหมู่', 'รายละเอียด', 'สถานที่', 'ละติจูด', 'ลองจิจูด', 'ความเร่งด่วน', 'สถานะ', 'หมายเหตุ/ผลการดำเนินการ', 'จำนวนโหวต', 'อัปเดตล่าสุด'];
+  const rows = list.map(i => [i.id, fmtDate(i.createdAt), i.name, i.phone, i.category, i.description, i.location, i.lat ?? '', i.lng ?? '', i.urgency, i.status, i.note, i.votes, fmtDate(i.updatedAt)]);
+  const cell = v => {
+    let s = String(v ?? '');
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; // prevent spreadsheet formula injection
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const csv = '﻿' + [head, ...rows].map(r => r.map(cell).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `issues-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`ส่งออก ${list.length} รายการแล้ว`);
+}
+
+// ---- Admin detail modal ----
+let pendingAfter = '';
 function openDetail(id) {
   const i = issues.find(x => x.id === id);
   if (!i) return;
+  pendingAfter = '';
+  destroyMini();
   $('detailBody').innerHTML = `
     <div class="flex justify-between items-start mb-3">
       <div>
@@ -452,8 +875,9 @@ function openDetail(id) {
       <p><span class="text-gray-500">รายละเอียด:</span> ${esc(i.description)}</p>
       <p><span class="text-gray-500">สถานที่:</span> ${esc(i.location)}</p>
       <p><span class="text-gray-500">ผู้แจ้ง:</span> ${esc(i.name || 'ไม่ระบุชื่อ')} ${i.phone ? '· ' + esc(i.phone) : ''}</p>
-      <p><span class="text-gray-500">แจ้งเมื่อ:</span> ${fmtDate(i.createdAt)} · <span class="text-gray-500">อัปเดตล่าสุด:</span> ${fmtDate(i.updatedAt)}</p>
+      <p><span class="text-gray-500">แจ้งเมื่อ:</span> ${fmtDate(i.createdAt)} · <span class="text-gray-500">อัปเดตล่าสุด:</span> ${fmtDate(i.updatedAt)} · 👍 ${i.votes}</p>
     </div>
+    ${i.lat != null ? `<div id="miniMapA" class="h-44 w-full border border-gray-200 rounded-xl mb-4"></div>` : ''}
     <div class="grid sm:grid-cols-2 gap-3 mb-3">
       <div>
         <label class="text-sm text-gray-600">สถานะงาน</label>
@@ -461,12 +885,25 @@ function openDetail(id) {
           ${STATUSES.map(s => `<option value="${s}" ${s === i.status ? 'selected' : ''}>${s}</option>`).join('')}
         </select>
       </div>
-      <div class="flex items-end"><div>${badge(i.status)}</div></div>
+      <div>
+        <label class="text-sm text-gray-600">ความเร่งด่วน</label>
+        <select id="dUrgency" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          ${URGENCIES.map(s => `<option value="${s}" ${s === i.urgency ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
     </div>
-    <div class="mb-4">
+    <div class="mb-3">
       <label class="text-sm text-gray-600">หมายเหตุ / ผลการดำเนินการ (แสดงให้ประชาชนเห็น)</label>
       <textarea id="dNote" rows="3" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">${esc(i.note)}</textarea>
     </div>
+    <div class="mb-4">
+      <label class="text-sm text-gray-600">รูปหลังแก้ไข (แสดงให้ประชาชนเห็น)</label>
+      <input id="dAfter" type="file" accept="image/*" class="mt-1 w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+      <img id="dAfterPrev" src="${i.afterImage || ''}" class="${i.afterImage ? '' : 'hidden'} mt-2 rounded-lg max-h-40 object-cover border">
+      ${i.afterImage ? `<label class="text-xs text-gray-500 flex items-center gap-1.5 mt-1"><input type="checkbox" id="dRemoveAfter"> ลบรูปหลังแก้ไขเดิม</label>` : ''}
+    </div>
+    <h4 class="font-semibold text-gray-700 mb-2 text-sm">ประวัติสถานะ</h4>
+    <div class="mb-4">${timelineHTML(i)}</div>
     <div class="flex flex-wrap gap-2 justify-between">
       <button onclick="deleteIssue('${i.id}', true)" class="text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 text-sm px-4 py-2 rounded-lg">🗑️ ลบรายการ</button>
       <div class="flex gap-2">
@@ -474,17 +911,42 @@ function openDetail(id) {
         <button onclick="saveDetail('${i.id}')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg">บันทึก</button>
       </div>
     </div>`;
+  $('dAfter').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) { pendingAfter = ''; return; }
+    try {
+      pendingAfter = await fileToBase64(f);
+      const p = $('dAfterPrev'); p.src = pendingAfter; p.classList.remove('hidden');
+    } catch (err) { toast('ไม่สามารถอ่านไฟล์รูปภาพได้'); pendingAfter = ''; }
+  });
   $('detailModal').classList.remove('hidden');
+  showMiniMap('miniMapA', i);
 }
-function closeDetail() { $('detailModal').classList.add('hidden'); }
+function closeDetail() {
+  destroyMini();
+  $('detailModal').classList.add('hidden');
+}
 $('detailModal').addEventListener('click', e => { if (e.target === $('detailModal')) closeDetail(); });
 function saveDetail(id) {
   if (!isAdmin) return;
   const i = issues.find(x => x.id === id);
   if (!i) return;
-  i.status = $('dStatus').value;
-  i.note = $('dNote').value.trim();
-  i.updatedAt = new Date().toISOString();
+  const newStatus = $('dStatus').value;
+  const newNote = $('dNote').value.trim();
+  const removeAfter = $('dRemoveAfter') && $('dRemoveAfter').checked;
+  const changed = newStatus !== i.status || newNote !== i.note;
+  const afterChanged = !!pendingAfter || removeAfter;
+  const now = new Date().toISOString();
+
+  i.urgency = $('dUrgency').value;
+  if (pendingAfter) i.afterImage = pendingAfter;
+  else if (removeAfter) i.afterImage = '';
+  if (changed || afterChanged) {
+    i.history.push({ status: newStatus, note: newNote || (pendingAfter ? 'เพิ่มรูปหลังแก้ไข' : ''), at: now });
+  }
+  i.status = newStatus;
+  i.note = newNote;
+  i.updatedAt = now;
   if (saveIssues(issues)) { closeDetail(); renderAdmin(); toast('บันทึกการอัปเดตแล้ว'); }
 }
 function deleteIssue(id, fromModal) {
@@ -497,9 +959,9 @@ function deleteIssue(id, fromModal) {
   toast('ลบรายการแล้ว');
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLogin(); closeDetail(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLogin(); closeDetail(); closePublic(); } });
 
-// ---------- Boot ----------
+// ====================== Boot ======================
 showView(isAdmin ? 'admin' : 'public');
 </script>
 </body>
