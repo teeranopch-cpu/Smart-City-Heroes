@@ -1,0 +1,6 @@
+{
+  "name": "Smart Integrity City - บอร์ดเกมเมืองสุจริตอัจฉริยะ",
+  "description": "บอร์ดเกมการศึกษา Smart Integrity City พลิกโฉมเมืองสุจริตอัจฉริยะ ผสานเทคโนโลยี NFC ร่วมกับ Web Application เพื่อเสริมสร้างคุณลักษณะ 5 ประการของโรงเรียนสุจริต",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
